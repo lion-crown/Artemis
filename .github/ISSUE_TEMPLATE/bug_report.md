@@ -1,0 +1,34 @@
+---
+name: Bug report
+about: Report a defect or unexpected behavior in Artemis
+title: "[bug] "
+labels: bug
+---
+
+## What happened
+
+<!-- A clear description of the bug. -->
+
+## Expected behavior
+
+<!-- What you thought should happen. -->
+
+## Steps to reproduce
+
+1.
+2.
+3.
+
+## Environment
+
+- `artemis` version:
+- Python version:
+- OS:
+- Install method: pip / Docker / source
+- LLM provider (if relevant):
+
+## Logs / screenshots
+
+```
+Paste relevant logs or attach screenshots.
+```

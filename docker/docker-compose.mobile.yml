@@ -1,0 +1,47 @@
+# =============================================================================
+# Artemis — Remote Phone (mobile) compose overlay for local / DinD testing
+#
+# Usage (from repo root):
+#   # once: download platform-tools next to the repo
+#   mkdir -p .tools && cd /tmp && curl -fsSL -o pt.zip \
+#     https://dl.google.com/android/repository/platform-tools-latest-linux.zip \
+#     && unzip -qo pt.zip -d /workspace/Artemis/.tools
+#
+#   docker compose -f docker/docker-compose.mobile.yml up -d --build
+#
+# This file is standalone (not an overlay) because ``network_mode: host``
+# conflicts with published ``ports`` from the base compose file.
+#
+# Host prerequisites:
+# - Docker socket usable by the container
+# - /dev/binder or /dev/binderfs on the host
+# - Enough free disk for the Redroid image
+# =============================================================================
+
+services:
+  artemis:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: artemis:latest
+    container_name: artemis
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    volumes:
+      - ${ARTEMIS_DATA:-~/.artemis}:/data/.artemis
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /dev/binderfs:/dev/binderfs
+      - ${ARTEMIS_PLATFORM_TOOLS:-../.tools/platform-tools}:/opt/android-sdk/platform-tools:ro
+    environment:
+      - HOME=/data
+      - ARTEMIS_BIND_HOST=0.0.0.0
+      - ARTEMIS_PORT=${ARTEMIS_PORT:-8088}
+      - ARTEMIS_LOG_LEVEL=${ARTEMIS_LOG_LEVEL:-info}
+      - ARTEMIS_DEFAULT_PASSWORD=${ARTEMIS_DEFAULT_PASSWORD:-}
+      - ARTEMIS_ADMIN_USERNAME=${ARTEMIS_ADMIN_USERNAME:-admin}
+      - ARTEMIS_MOBILE_ADB_HOST=${ARTEMIS_MOBILE_ADB_HOST:-127.0.0.1:5555}
+      - ARTEMIS_MOBILE_CONTAINER=${ARTEMIS_MOBILE_CONTAINER:-artemis-mobile-android}
+      - ARTEMIS_ENABLE_MOBILE=${ARTEMIS_ENABLE_MOBILE:-1}
+      - ANDROID_HOME=/opt/android-sdk
+      - ANDROID_SDK_ROOT=/opt/android-sdk

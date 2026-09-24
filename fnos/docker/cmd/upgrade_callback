@@ -1,0 +1,35 @@
+#!/bin/bash
+#
+# Artemis — 升级后回调
+# 升级会重装包内向导文件（wizard/config 恢复成带占位符的模板），
+# 这里用现有 docker/.env 的凭据重新渲染「设置」窗口的当前密码显示，
+# 并确认回落备份 artemis-login.txt 存在（不覆盖用户已在 Web 内修改的密码，
+# 仅在备份缺失时按 .env 重建）。新版镜像由应用中心拉取并重建容器。
+#
+set -euo pipefail
+
+_ARTEMIS_COMMON="$(dirname "$0")/common.sh"
+[ -f "$_ARTEMIS_COMMON" ] || _ARTEMIS_COMMON="/var/apps/artemis/cmd/common.sh"
+[ -f "$_ARTEMIS_COMMON" ] && source "$_ARTEMIS_COMMON"
+
+ENV_FILE="${TRIM_APPDEST:-/var/apps/artemis/target}/docker/.env"
+DATA_DIR="/var/apps/artemis/share/artemis/data"
+mkdir -p "$DATA_DIR"
+
+ADMIN_USER="$(artemis_env_get "$ENV_FILE" ARTEMIS_ADMIN_USERNAME)"
+ADMIN_PASS="$(artemis_env_get "$ENV_FILE" ARTEMIS_DEFAULT_PASSWORD)"
+[ -n "$ADMIN_USER" ] || ADMIN_USER="admin"
+
+if [ -n "$ADMIN_PASS" ]; then
+    # 「设置」窗口当前密码显示刷新
+    WIZARD_TEMPLATE="${TRIM_APPDEST:-/var/apps/artemis/target}/wizard/config.template"
+    WIZARD_DIR="$(dirname "${TRIM_APPDEST:-/var/apps/artemis/target}")/wizard"
+    [ -f "$WIZARD_TEMPLATE" ] || WIZARD_TEMPLATE="${TRIM_APPDEST:-/var/apps/artemis/target}/../wizard/config"
+    artemis_render_config_wizard "$WIZARD_TEMPLATE" "$WIZARD_DIR" "$ADMIN_USER" "$ADMIN_PASS"
+    # 回落备份缺失时按 .env 重建（存在则不动，尊重用户在 Web 内改过的密码）
+    if [ ! -f "${DATA_DIR}/artemis-login.txt" ]; then
+        artemis_write_login_file "$DATA_DIR" "$ADMIN_USER" "$ADMIN_PASS" 8088
+    fi
+fi
+
+exit 0

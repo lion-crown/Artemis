@@ -1,0 +1,20 @@
+services:
+  artemis:
+    image: ghcr.io/tencentcloud/artemis:latest
+    container_name: artemis
+    restart: unless-stopped
+    pull_policy: always
+    ports:
+      - "8088:8088"
+    volumes:
+      - "/var/apps/artemis/share/artemis/data:/data/.artemis"
+    environment:
+      - HOME=/data
+      - ARTEMIS_BIND_HOST=0.0.0.0
+      - ARTEMIS_PORT=${ARTEMIS_PORT:-8088}
+      - ARTEMIS_LOG_LEVEL=${ARTEMIS_LOG_LEVEL:-info}
+      - ARTEMIS_DEFAULT_PASSWORD=${ARTEMIS_DEFAULT_PASSWORD:-}
+      - ARTEMIS_ADMIN_USERNAME=${ARTEMIS_ADMIN_USERNAME:-admin}
+      - ARTEMIS_ADMIN_DISPLAY_NAME=${ARTEMIS_ADMIN_DISPLAY_NAME:-Admin}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY:-}

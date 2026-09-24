@@ -1,0 +1,15 @@
+{
+  "fixed": {
+    "file_version": "0.9.26"
+  },
+  "info": {
+    "0000": {
+      "ProductVersion": "0.9.26",
+      "CompanyName": "Artemis",
+      "FileDescription": "Artemis desktop",
+      "LegalCopyright": "Copyright © 2026 Artemis",
+      "ProductName": "Artemis",
+      "Comments": "Artemis desktop shell"
+    }
+  }
+}

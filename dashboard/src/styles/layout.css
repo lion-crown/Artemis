@@ -1,0 +1,469 @@
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter",
+    "Noto Sans SC", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+html {
+  --window-controls-inset-end: 0px;
+}
+
+/* Wails v3 frameless drag: the element under the cursor must set this. */
+html[data-artemis-desktop-chrome] .artemis-desktop-drag {
+  --wails-draggable: drag;
+  user-select: none;
+}
+
+html[data-artemis-desktop-chrome] .artemis-desktop-no-drag,
+html[data-artemis-desktop-chrome] .artemis-desktop-drag button,
+html[data-artemis-desktop-chrome] .artemis-desktop-drag a,
+html[data-artemis-desktop-chrome] .artemis-desktop-drag input,
+html[data-artemis-desktop-chrome] .artemis-desktop-drag textarea,
+html[data-artemis-desktop-chrome] .artemis-desktop-drag select,
+html[data-artemis-desktop-chrome] .artemis-desktop-drag [role="button"],
+html[data-artemis-desktop-chrome] [data-artemis-no-drag] {
+  --wails-draggable: no-drag;
+}
+
+/* Right-edge overlays sit under the frameless caption buttons unless inset. */
+html[data-artemis-desktop-chrome] [data-artemis-chrome-end-pad] {
+  padding-inline-end: max(
+    12px,
+    var(--window-controls-inset-end, 0px)
+  ) !important;
+}
+
+html[data-artemis-desktop-chrome] .artemis-drawer-right .artemis-drawer-header,
+html[data-artemis-desktop-chrome] .ant-drawer-right .ant-drawer-header {
+  padding-inline-end: max(
+    24px,
+    var(--window-controls-inset-end, 0px)
+  ) !important;
+}
+
+html[data-artemis-desktop-chrome] .artemis-drawer-right .artemis-drawer-close,
+html[data-artemis-desktop-chrome] .ant-drawer-right .ant-drawer-close {
+  inset-inline-end: var(--window-controls-inset-end, 0px) !important;
+}
+
+#root {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* ---- Global touch & interaction fixes ---- */
+button,
+a,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.ant-layout,
+.artemis-layout {
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.ant-layout-content,
+.artemis-layout-content {
+  overflow: hidden;
+  height: 100%;
+}
+
+.page-container {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--fn-bg-layout);
+  transition: background var(--fn-transition);
+}
+
+.page-header {
+  flex: 0 0 auto;
+}
+
+.page-content {
+  flex: 1 1 auto;
+  overflow: hidden;
+  padding: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.table-container {
+  height: 100%;
+  overflow: hidden;
+}
+
+.table-wrapper {
+  height: 100%;
+  overflow: auto;
+}
+
+/* ---- Sidebar transition ---- */
+.ant-layout-sider,
+[class*="-layout-sider"] {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.ant-card-body,
+[class*="-card-body"] {
+  height: 100%;
+  padding: 0;
+}
+
+/* ---- Dark mode: force antd component backgrounds ---- */
+/* Cards */
+html[data-theme="dark"] .ant-card,
+html[data-theme="dark"] .artemis-ant-card,
+html[data-theme="dark"] [class$="-card"]:not([class*="-card-"]) {
+  background-color: var(--fn-bg-secondary) !important;
+  border-color: var(--fn-border-primary) !important;
+}
+
+/* Tables */
+html[data-theme="dark"] .ant-table-wrapper,
+html[data-theme="dark"] .artemis-ant-table-wrapper {
+  background-color: transparent !important;
+}
+
+html[data-theme="dark"] .ant-table,
+html[data-theme="dark"] .artemis-ant-table {
+  background-color: var(--fn-bg-primary) !important;
+}
+
+html[data-theme="dark"] .ant-table-container,
+html[data-theme="dark"] .artemis-ant-table-container {
+  border-color: var(--fn-border-primary) !important;
+}
+
+html[data-theme="dark"] .ant-table-thead > tr > th,
+html[data-theme="dark"] .artemis-ant-table-thead > tr > th,
+html[data-theme="dark"] .ant-table-thead > tr > td,
+html[data-theme="dark"] .artemis-ant-table-thead > tr > td {
+  background-color: var(--fn-bg-tertiary) !important;
+  border-color: var(--fn-border-primary) !important;
+  color: var(--fn-text-secondary) !important;
+}
+
+html[data-theme="dark"] .ant-table-tbody > tr > td,
+html[data-theme="dark"] .artemis-ant-table-tbody > tr > td {
+  border-color: var(--fn-border-primary) !important;
+  color: var(--fn-text-primary) !important;
+}
+
+html[data-theme="dark"] .ant-table-tbody > tr.ant-table-row:hover > td,
+html[data-theme="dark"] .artemis-ant-table-tbody > tr:hover > td {
+  background-color: var(--fn-bg-hover) !important;
+}
+
+html[data-theme="dark"] .ant-table-cell-row-hover,
+html[data-theme="dark"] .artemis-ant-table-cell-row-hover {
+  background-color: var(--fn-bg-hover) !important;
+}
+
+html[data-theme="dark"] .ant-table-placeholder td,
+html[data-theme="dark"] .artemis-ant-table-placeholder td {
+  background-color: transparent !important;
+}
+
+html[data-theme="dark"] .ant-empty-description,
+html[data-theme="dark"] .artemis-ant-empty-description {
+  color: var(--fn-text-tertiary) !important;
+}
+
+/* Inputs */
+html[data-theme="dark"] .ant-input,
+html[data-theme="dark"] .artemis-ant-input,
+html[data-theme="dark"] .ant-input-affix-wrapper,
+html[data-theme="dark"] .artemis-ant-input-affix-wrapper {
+  background-color: var(--fn-bg-primary) !important;
+  border-color: var(--fn-border-input) !important;
+  color: var(--fn-text-primary) !important;
+}
+
+html[data-theme="dark"] .ant-input::placeholder,
+html[data-theme="dark"] .artemis-ant-input::placeholder {
+  color: var(--fn-text-placeholder) !important;
+}
+
+/* Select */
+html[data-theme="dark"] .ant-select-selector,
+html[data-theme="dark"] .artemis-ant-select-selector {
+  background-color: var(--fn-bg-primary) !important;
+  border-color: var(--fn-border-input) !important;
+  color: var(--fn-text-primary) !important;
+}
+
+html[data-theme="dark"] .ant-select-dropdown,
+html[data-theme="dark"] .artemis-ant-select-dropdown {
+  background-color: var(--fn-bg-elevated) !important;
+}
+
+html[data-theme="dark"] .ant-select-item-option-active,
+html[data-theme="dark"] .artemis-ant-select-item-option-active {
+  background-color: var(--fn-bg-hover) !important;
+}
+
+html[data-theme="dark"] .ant-select-item-option-selected,
+html[data-theme="dark"] .artemis-ant-select-item-option-selected {
+  background-color: var(--fn-bg-active) !important;
+}
+
+/* InputNumber */
+html[data-theme="dark"] .ant-input-number,
+html[data-theme="dark"] .artemis-ant-input-number {
+  background-color: var(--fn-bg-primary) !important;
+  border-color: var(--fn-border-input) !important;
+  color: var(--fn-text-primary) !important;
+}
+
+/* Modal */
+html[data-theme="dark"] .ant-modal-content,
+html[data-theme="dark"] .artemis-ant-modal-content {
+  background-color: var(--fn-bg-elevated) !important;
+}
+
+html[data-theme="dark"] .ant-modal-header,
+html[data-theme="dark"] .artemis-ant-modal-header {
+  background-color: var(--fn-bg-elevated) !important;
+}
+
+/* Form */
+html[data-theme="dark"] .ant-form-item-label > label,
+html[data-theme="dark"] .artemis-ant-form-item-label > label {
+  color: var(--fn-text-secondary) !important;
+}
+
+/* Drawer */
+html[data-theme="dark"] .ant-drawer-content,
+html[data-theme="dark"] .artemis-ant-drawer-content {
+  background-color: var(--fn-bg-elevated) !important;
+}
+
+/* Pagination */
+html[data-theme="dark"] .ant-pagination-item,
+html[data-theme="dark"] .artemis-ant-pagination-item {
+  background-color: transparent !important;
+  border-color: var(--fn-border-input) !important;
+}
+
+html[data-theme="dark"] .ant-pagination-item a,
+html[data-theme="dark"] .artemis-ant-pagination-item a {
+  color: var(--fn-text-primary) !important;
+}
+
+/* Checkbox */
+html[data-theme="dark"] .ant-checkbox-inner,
+html[data-theme="dark"] .artemis-ant-checkbox-inner {
+  background-color: transparent !important;
+  border-color: var(--fn-border-input) !important;
+}
+
+/* Tabs */
+html[data-theme="dark"] .ant-tabs-tab,
+html[data-theme="dark"] .artemis-ant-tabs-tab {
+  color: var(--fn-text-secondary) !important;
+}
+
+/* Tooltip */
+html[data-theme="dark"] .ant-tooltip-inner,
+html[data-theme="dark"] .artemis-ant-tooltip-inner {
+  background-color: var(--fn-bg-elevated) !important;
+}
+
+/* Popover */
+html[data-theme="dark"] .ant-popover-inner,
+html[data-theme="dark"] .artemis-ant-popover-inner {
+  background-color: var(--fn-bg-elevated) !important;
+}
+
+/* Tag */
+html[data-theme="dark"] .ant-tag,
+html[data-theme="dark"] .artemis-ant-tag {
+  border-color: var(--fn-border-primary) !important;
+}
+
+/* Switch */
+html[data-theme="dark"] .ant-switch,
+html[data-theme="dark"] .artemis-ant-switch {
+  background: var(--fn-text-quaternary) !important;
+}
+
+html[data-theme="dark"] .ant-switch-checked,
+html[data-theme="dark"] .artemis-ant-switch-checked {
+  background: var(--fn-color-brand) !important;
+}
+
+/* ---- Mobile responsive ---- */
+@media (max-width: 767px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Lucide icons: bump common inline sizes by one step (+2px) */
+  #root .lucide[width="12"] {
+    width: 14px !important;
+    height: 14px !important;
+  }
+  #root .lucide[width="14"] {
+    width: 16px !important;
+    height: 16px !important;
+  }
+  #root .lucide[width="16"] {
+    width: 18px !important;
+    height: 18px !important;
+  }
+  #root .lucide[width="18"] {
+    width: 20px !important;
+    height: 20px !important;
+  }
+  #root .lucide[width="20"] {
+    width: 22px !important;
+    height: 22px !important;
+  }
+  #root .lucide[width="22"] {
+    width: 24px !important;
+    height: 24px !important;
+  }
+  #root .lucide[width="24"] {
+    width: 26px !important;
+    height: 26px !important;
+  }
+  #root .lucide[width="28"] {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  .page-content {
+    padding: 0;
+  }
+
+  /* Tables scroll inside their own wrapper on mobile — do not set
+     min-width on .artemis-table (that expands the page and creates a
+     second, page-level horizontal scrollbar). */
+  .ant-table-wrapper,
+  .artemis-table-wrapper {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  /* Modal responsive — max width on mobile */
+  .ant-modal,
+  [class*="-modal"] {
+    max-width: calc(100vw - 24px) !important;
+    margin: 12px auto !important;
+  }
+
+  .ant-modal-content,
+  [class*="-modal-content"] {
+    padding: 16px !important;
+  }
+
+  /* Drawer responsive */
+  .ant-drawer-content-wrapper,
+  [class*="-drawer-content-wrapper"] {
+    max-width: 100vw !important;
+  }
+
+  /* Confirm dialogs — full-width stacked action buttons */
+  .artemis-confirm-modal--mobile.artemis-modal-root .artemis-modal,
+  .artemis-confirm-modal--mobile [class*="-modal"] {
+    max-width: calc(100vw - 32px) !important;
+    margin: 0 auto !important;
+    padding-bottom: 0;
+  }
+
+  .artemis-confirm-modal--mobile .artemis-modal-confirm-body-wrapper,
+  .artemis-confirm-modal--mobile [class*="-modal-confirm-body-wrapper"] {
+    padding: 0 2px;
+  }
+
+  .artemis-confirm-modal--mobile .artemis-modal-confirm-title,
+  .artemis-confirm-modal--mobile [class*="-modal-confirm-title"] {
+    font-size: 17px;
+    line-height: 1.35;
+  }
+
+  .artemis-confirm-modal--mobile .artemis-modal-confirm-content,
+  .artemis-confirm-modal--mobile [class*="-modal-confirm-content"] {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .artemis-confirm-modal--mobile .artemis-modal-confirm-btns,
+  .artemis-confirm-modal--mobile [class*="-modal-confirm-btns"] {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 8px;
+    margin-top: 20px;
+  }
+
+  .artemis-confirm-modal--mobile .artemis-modal-confirm-btns .artemis-btn,
+  .artemis-confirm-modal--mobile
+    [class*="-modal-confirm-btns"]
+    [class*="-btn"] {
+    width: 100%;
+    margin-inline-start: 0 !important;
+    min-height: 40px;
+  }
+}
+
+/* ---- Nav badge pulse animation ---- */
+@keyframes nav-badge-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.15);
+  }
+}
+
+.nav-badge-new {
+  animation: nav-badge-pulse 1.8s ease-in-out infinite;
+  display: inline-block;
+}
+
+.nav-badge-new--collapsed {
+  box-shadow: 0 0 0 1.5px var(--fn-sidebar-bg);
+}
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--fn-text-quaternary);
+  border-radius: var(--fn-radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--fn-text-tertiary);
+}
+
+html[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}

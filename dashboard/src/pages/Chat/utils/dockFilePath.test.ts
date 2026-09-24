@@ -1,0 +1,273 @@
+import {
+  buildDockPathTree,
+  canonicalizeDockFilePath,
+  collectDockFolderPaths,
+  dedupeDockFilePaths,
+  dockFileBasename,
+  dockFileTabId,
+  listDockFilePathsForTree,
+  mergeDockExpandedFolders,
+  normalizeDockFilePath,
+  toDockWorkspaceApiPath,
+  toWorkspaceApiPath,
+} from "./dockFilePath";
+
+describe("dockFilePath", () => {
+  it("normalizes file:// and backslashes", () => {
+    expect(normalizeDockFilePath("file:///tmp/a.txt")).toBe("/tmp/a.txt");
+    expect(normalizeDockFilePath("outbound\\report.pdf")).toBe(
+      "outbound/report.pdf",
+    );
+  });
+
+  it("canonicalizes agent-home and truncated .artemis paths together", () => {
+    expect(
+      canonicalizeDockFilePath(
+        "/home/wally/.artemis/agents/main/generated/iron-man.pptx",
+        "main",
+      ),
+    ).toBe("generated/iron-man.pptx");
+    expect(
+      canonicalizeDockFilePath(
+        "/.artemis/agents/main/generated/iron-man.pptx",
+        "main",
+      ),
+    ).toBe("generated/iron-man.pptx");
+    expect(
+      canonicalizeDockFilePath(
+        ".artemis/agents/main/generated/iron-man.pptx",
+        "main",
+      ),
+    ).toBe("generated/iron-man.pptx");
+    expect(canonicalizeDockFilePath("generated/iron-man.pptx", "main")).toBe(
+      "generated/iron-man.pptx",
+    );
+  });
+
+  it("canonicalizes Windows agent-home paths", () => {
+    expect(
+      canonicalizeDockFilePath(
+        "C:\\Users\\wally\\.artemis\\agents\\main\\generated\\a.pptx",
+        "main",
+      ),
+    ).toBe("generated/a.pptx");
+    expect(
+      canonicalizeDockFilePath(
+        "C:/Users/wally/.artemis/agents/main/generated/a.pptx",
+        "main",
+      ),
+    ).toBe("generated/a.pptx");
+  });
+
+  it("dedupes absolute and relative agent paths to one entry", () => {
+    expect(
+      dedupeDockFilePaths(
+        [
+          "/.artemis/agents/main/generated/iron-man.pptx",
+          "/home/wally/.artemis/agents/main/generated/iron-man.pptx",
+          "/home/wally/.artemis/agents/main/generated/ironman-ppt.js",
+          "generated/ironman-ppt.py",
+        ],
+        "main",
+      ),
+    ).toEqual([
+      "/home/wally/.artemis/agents/main/generated/iron-man.pptx",
+      "/home/wally/.artemis/agents/main/generated/ironman-ppt.js",
+      "generated/ironman-ppt.py",
+    ]);
+  });
+
+  it("dedupes by normalized full path and keeps first-seen order", () => {
+    expect(
+      dedupeDockFilePaths([
+        "outbound/a.txt",
+        "outbound/a.txt",
+        "file:///tmp/a.txt",
+        "/tmp/a.txt",
+        "outbound/b.txt",
+      ]),
+    ).toEqual(["outbound/a.txt", "/tmp/a.txt", "outbound/b.txt"]);
+  });
+
+  it("keeps host paths that contain a workspace directory segment", () => {
+    expect(
+      canonicalizeDockFilePath(
+        "/Users/jubaoliang/workspace/sapiens_intro/Sapiens_Introduction.pptx",
+        "ENG1XX",
+      ),
+    ).toBe(
+      "/Users/jubaoliang/workspace/sapiens_intro/Sapiens_Introduction.pptx",
+    );
+    expect(
+      toDockWorkspaceApiPath(
+        "/Users/jubaoliang/workspace/sapiens_intro/Sapiens_Introduction.pptx",
+        "ENG1XX",
+      ),
+    ).toBe(
+      "file:///Users/jubaoliang/workspace/sapiens_intro/Sapiens_Introduction.pptx",
+    );
+  });
+
+  it("still strips virtual /workspace/… roots", () => {
+    expect(canonicalizeDockFilePath("/workspace/x.py", "main")).toBe("x.py");
+    expect(canonicalizeDockFilePath("file:///workspace/x.py")).toBe("x.py");
+  });
+
+  it("toWorkspaceApiPath keeps agent-home absolute as file:// for failback", () => {
+    expect(
+      toWorkspaceApiPath(
+        "/Users/jubaoliang/.artemis/agents/SBGM5Q/earth-presentation.html",
+      ),
+    ).toBe(
+      "file:///Users/jubaoliang/.artemis/agents/SBGM5Q/earth-presentation.html",
+    );
+  });
+
+  it("builds basename and tab id from normalized path", () => {
+    expect(dockFileBasename("outbound/docs/note.md")).toBe("note.md");
+    expect(dockFileTabId("file:///workspace/x.py")).toBe("file:x.py");
+    expect(
+      dockFileTabId("/home/wally/.artemis/agents/main/generated/a.pptx", "main"),
+    ).toBe("file:generated/a.pptx");
+  });
+
+  it("folder tree uses absolute paths from artifacts", () => {
+    const tree = buildDockPathTree(
+      [
+        "/home/wally/.artemis/agents/main/generated/iron-man.pptx",
+        "/.artemis/agents/main/generated/iron-man.pptx",
+      ],
+      "main",
+    );
+    expect(tree).toHaveLength(1);
+    expect(tree[0].name).toBe(
+      "home / wally / .artemis / agents / main / generated",
+    );
+    expect(tree[0].path).toBe("/home/wally/.artemis/agents/main/generated");
+    expect(tree[0].children.map((c) => c.name)).toEqual(["iron-man.pptx"]);
+  });
+
+  it("nests system-scoped skill paths under agent home", () => {
+    const tree = buildDockPathTree(
+      [
+        "/home/wally/.artemis/agents/0DMHDH/.artemis/skills/weather-query/SKILL.md",
+        "/home/wally/.artemis/agents/0DMHDH/.artemis/skills/weather-query/scripts/weather.py",
+      ],
+      "0DMHDH",
+    );
+    expect(tree).toHaveLength(1);
+    expect(tree[0].name).toBe(
+      "home / wally / .artemis / agents / 0DMHDH / .artemis / skills / weather-query",
+    );
+    expect(tree[0].children.map((c) => c.name).sort()).toEqual([
+      "SKILL.md",
+      "scripts",
+    ]);
+    const scripts = tree[0].children.find((c) => c.name === "scripts");
+    expect(scripts?.children.map((c) => c.name)).toEqual(["weather.py"]);
+  });
+
+  it("listDockFilePathsForTree dedupes by canonical key and keeps absolute", () => {
+    expect(
+      listDockFilePathsForTree(
+        ["/home/wally/.artemis/agents/main/generated/a.pptx", "generated/a.pptx"],
+        "main",
+      ),
+    ).toEqual(["/home/wally/.artemis/agents/main/generated/a.pptx"]);
+  });
+
+  it("maps download APIs; host abs stays file:// for virtual root failback", () => {
+    expect(toWorkspaceApiPath("/outbound/a.txt")).toBe("outbound/a.txt");
+    expect(toWorkspaceApiPath("/tmp/a.txt")).toBe("file:///tmp/a.txt");
+    expect(toWorkspaceApiPath("outbound/a.txt")).toBe("outbound/a.txt");
+    expect(
+      toDockWorkspaceApiPath(
+        "/home/wally/.artemis/agents/main/generated/a.pptx",
+        "main",
+      ),
+    ).toBe("file:///home/wally/.artemis/agents/main/generated/a.pptx");
+    expect(
+      toDockWorkspaceApiPath(
+        "C:\\Users\\wally\\.artemis\\agents\\main\\generated\\a.pptx",
+        "main",
+      ),
+    ).toBe("file:///C:/Users/wally/.artemis/agents/main/generated/a.pptx");
+    // Tab identity still collapses; API path does not.
+    expect(
+      canonicalizeDockFilePath(
+        "/home/wally/.artemis/agents/main/generated/a.pptx",
+        "main",
+      ),
+    ).toBe("generated/a.pptx");
+  });
+
+  it("builds a collapsed folder tree like PR files-changed", () => {
+    const tree = buildDockPathTree([
+      "dashboard/src/pages/Chat/hooks/useChatDockPanel.ts",
+      "dashboard/src/pages/Chat/hooks/chatStore.ts",
+      "src/artemis/api.md",
+      "tests/unit/gateway/ws.py",
+    ]);
+    expect(tree).toEqual([
+      {
+        name: "dashboard / src / pages / Chat / hooks",
+        path: "dashboard/src/pages/Chat/hooks",
+        isDir: true,
+        children: [
+          {
+            name: "chatStore.ts",
+            path: "dashboard/src/pages/Chat/hooks/chatStore.ts",
+            isDir: false,
+            children: [],
+          },
+          {
+            name: "useChatDockPanel.ts",
+            path: "dashboard/src/pages/Chat/hooks/useChatDockPanel.ts",
+            isDir: false,
+            children: [],
+          },
+        ],
+      },
+      {
+        name: "src / artemis",
+        path: "src/artemis",
+        isDir: true,
+        children: [
+          {
+            name: "api.md",
+            path: "src/artemis/api.md",
+            isDir: false,
+            children: [],
+          },
+        ],
+      },
+      {
+        name: "tests / unit / gateway",
+        path: "tests/unit/gateway",
+        isDir: true,
+        children: [
+          {
+            name: "ws.py",
+            path: "tests/unit/gateway/ws.py",
+            isDir: false,
+            children: [],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("merges expanded folders without reopening user-collapsed dirs", () => {
+    const first = buildDockPathTree(["a/b/one.txt"]);
+    const folders1 = collectDockFolderPaths(first);
+    const initial = mergeDockExpandedFolders([], folders1, []);
+    expect([...initial.expanded]).toEqual(["a/b"]);
+
+    const collapsed = new Set<string>(); // user collapsed a/b
+    const second = buildDockPathTree(["a/b/one.txt", "c/d/two.txt"]);
+    const folders2 = collectDockFolderPaths(second);
+    const merged = mergeDockExpandedFolders(collapsed, folders2, initial.seen);
+    expect(merged.expanded.has("a/b")).toBe(false);
+    expect(merged.expanded.has("c/d")).toBe(true);
+  });
+});

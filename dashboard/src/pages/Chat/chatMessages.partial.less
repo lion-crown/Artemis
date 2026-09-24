@@ -1,0 +1,1390 @@
+/* Message list, bubbles, tools, thinking */
+/* ---------- Message list ---------- */
+.messageListWrapper {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Left gutter so the in-thread turn timeline ticks do not cover bubbles.
+   Prefer parent `.chatMainWithTurnRail` (title + composer + list). This local
+   class remains as a fallback when MessageList is mounted alone. */
+.messageListWrapperWithRail {
+  --chat-turn-rail-gutter: 48px;
+
+  .messageListInner {
+    padding-inline-start: var(--chat-turn-rail-gutter);
+    padding-inline-end: var(--chat-column-pad-x, 24px);
+
+    @media (max-width: 863px) {
+      padding-inline-start: var(--chat-column-pad-x, 24px);
+    }
+  }
+}
+
+.messageList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 0 24px;
+  scrollbar-gutter: stable;
+  /* Disable browser scroll anchoring — fights follow-mode pins while
+     thinking/tool rows grow and causes visible up/down jitter. */
+  overflow-anchor: none;
+
+  /* Custom scrollbar for visual polish */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--fn-border-primary);
+    border-radius: 3px;
+
+    &:hover {
+      background: var(--fn-text-quaternary);
+    }
+  }
+}
+
+.scrollToBottomBtn {
+  /* Layout: centered, floating above the message list */
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  z-index: 20;
+
+  /* Base appearance — more prominent jump affordance */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 18px 9px 14px;
+  background: var(--fn-bg-elevated, var(--fn-bg-primary));
+  border: 1px solid color-mix(in srgb, var(--fn-color-brand) 35%, transparent);
+  border-radius: 999px;
+  color: var(--fn-text-brand);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.12),
+    0 2px 8px color-mix(in srgb, var(--fn-color-brand) 16%, transparent);
+  white-space: nowrap;
+
+  /* Smooth transitions for hover and visibility changes */
+  transition:
+    background var(--fn-transition-fast),
+    color var(--fn-transition-fast),
+    box-shadow var(--fn-transition-fast),
+    border-color var(--fn-transition-fast),
+    opacity 0.22s ease,
+    transform 0.22s ease,
+    visibility 0.22s;
+
+  /* Visible state — default is visible so the initial fadeIn animation plays */
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  visibility: visible;
+  pointer-events: auto;
+
+  &:hover {
+    background: color-mix(
+      in srgb,
+      var(--fn-color-brand) 8%,
+      var(--fn-bg-elevated, var(--fn-bg-primary))
+    );
+    color: var(--fn-text-brand);
+    border-color: color-mix(in srgb, var(--fn-color-brand) 55%, transparent);
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, 0.14),
+      0 3px 10px color-mix(in srgb, var(--fn-color-brand) 22%, transparent);
+    transform: translateX(-50%) translateY(-2px);
+  }
+
+  &:active {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--fn-color-brand);
+    outline-offset: 2px;
+  }
+}
+
+/* Explicit visible state — entrance from below */
+.scrollToBottomBtnVisible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  visibility: visible;
+  pointer-events: auto;
+  animation: scrollBtnEnter 0.24s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Hidden state — exits downward, pointer-events disabled to avoid ghost clicks */
+.scrollToBottomBtnHidden {
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@keyframes scrollBtnEnter {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(12px) scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+.messageListInner {
+  overflow-anchor: none;
+  --chat-column-max: 960px;
+  --chat-msg-avatar-slot: 44px;
+  /* Full list width; each row centers a 960px text track + avatar gutters
+     so history and live turns share the same column as the composer. */
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 280px;
+  margin: 0 auto;
+  padding-inline: var(--chat-column-pad-x, 24px);
+}
+
+.messageListLoading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.historyLoadMore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 0 16px;
+  color: var(--text-secondary, #888);
+  font-size: 12px;
+}
+
+.historyLoadMoreBtn {
+  font-size: 12px;
+  height: auto;
+  padding: 0 4px;
+}
+
+.historyLoadMoreHint {
+  color: inherit;
+}
+
+/* ---------- Message bubbles ---------- */
+/* 3 columns: expert avatar | composer-aligned text | user avatar */
+.chatMsgColumns() {
+  display: grid;
+  grid-template-columns:
+    var(--chat-msg-avatar-slot, 44px) minmax(0, var(--chat-column-max, 960px))
+    var(--chat-msg-avatar-slot, 44px);
+  justify-content: center;
+  width: 100%;
+}
+
+.messageBubble {
+  .chatMsgColumns();
+  align-items: start;
+  margin-bottom: 16px;
+}
+
+/* Grouped assistant turn: process summary + final answer as separate rows.
+   No fadeIn — tool appends must not remount-replay an entrance animation. */
+.assistantTurn {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+
+  .messageBubble {
+    margin-bottom: 0;
+  }
+}
+
+.turnInset {
+  .chatMsgColumns();
+
+  > * {
+    grid-column: 2;
+    min-width: 0;
+  }
+}
+
+.hitlSegment {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Legacy grouped bubbles (kept for compatibility) */
+.assistantGroup {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: color-mix(in srgb, var(--fn-color-brand) 1.5%, transparent);
+  }
+
+  > .messageBubble,
+  > div > .messageBubble {
+    margin-bottom: 0;
+  }
+}
+
+/* Compact mode: zero spacing for seamless group connection */
+.compactBubble {
+  margin-bottom: 0;
+  margin-top: 0;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.userBubble {
+  animation: fadeIn 0.25s ease;
+
+  .bubbleContent {
+    grid-column: 2;
+    justify-self: end;
+    max-width: min(75%, 600px);
+  }
+
+  .avatarCol {
+    grid-column: 3;
+    justify-self: center;
+  }
+}
+
+.userBubbleWithTags {
+  row-gap: 0;
+
+  .userComposerTags {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    max-width: min(75%, 600px);
+  }
+
+  .bubbleContent,
+  .avatarCol {
+    grid-row: 2;
+  }
+}
+
+.assistantBubble {
+  .bubbleContent {
+    grid-column: 2;
+  }
+
+  .avatarCol {
+    grid-column: 1;
+    justify-self: center;
+  }
+}
+
+.errorBubble .bubbleContent {
+  color: var(--fn-color-danger);
+}
+
+.errorBubble .assistantText {
+  color: var(--fn-color-danger);
+}
+
+.msgSender {
+  flex-shrink: 0;
+  padding-top: 2px;
+  line-height: 0;
+}
+
+.msgSenderBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  line-height: 0;
+  cursor: pointer;
+  border-radius: 50%;
+
+  &:hover {
+    opacity: 0.85;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--fn-color-brand);
+    outline-offset: 2px;
+  }
+}
+
+.msgAvatarPlain {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.msgUserAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fn-color-brand);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  user-select: none;
+}
+
+.avatarCol {
+  display: flex;
+  justify-content: center;
+  padding-top: 2px;
+  min-width: 0;
+}
+
+.botAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--fn-radius-full);
+  background: var(--fn-bg-primary);
+  border: 1px solid var(--fn-border-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+
+  img,
+  video {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+  }
+}
+
+.thinkingLogo {
+  display: block;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  flex-shrink: 0;
+  animation: ey-logo-breathe 4s ease-in-out infinite;
+}
+
+@keyframes ey-logo-breathe {
+  0%,
+  100% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+  45% {
+    filter: brightness(1.07);
+    transform: scale(1.025);
+  }
+  70% {
+    filter: brightness(1.02);
+    transform: scale(1.01);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinkingLogo {
+    animation: none;
+  }
+}
+
+.bubbleContent {
+  max-width: 100%;
+  min-width: 0;
+
+  &:hover .msgCopyBtn {
+    opacity: 1;
+  }
+
+  @media (max-width: 767px) {
+    max-width: min(95%, calc(100vw - 60px));
+  }
+}
+
+.userText {
+  background: linear-gradient(
+    135deg,
+    var(--fn-color-brand) 0%,
+    var(--fn-color-brand-soft) 100%
+  );
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 16px 16px 6px 16px;
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+
+  @media (max-width: 767px) {
+    font-size: 15px;
+  }
+}
+
+.userComposerTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 5px;
+  justify-content: flex-end;
+  opacity: 0.92;
+}
+
+.assistantText {
+  background: rgba(15, 23, 42, 0.025);
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: none;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--fn-text-primary);
+  word-break: break-word;
+  box-shadow: none;
+  position: relative;
+  overflow: visible;
+
+  @media (max-width: 767px) {
+    font-size: 16px;
+  }
+
+  // Markdown reset
+  :global {
+    p {
+      margin: 0 0 10px;
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+    pre {
+      margin: 10px 0;
+      border-radius: var(--fn-radius-md);
+      overflow-x: auto;
+    }
+    code {
+      font-size: 13.5px;
+    }
+    ul,
+    ol {
+      padding-left: 22px;
+      margin: 6px 0;
+    }
+    a {
+      color: var(--fn-text-brand);
+    }
+  }
+}
+
+/* Group position variants: transparent background — no visual border differences */
+.assistantText.groupFirst,
+.assistantText.groupMiddle,
+.assistantText.groupLast {
+  padding: 2px 0;
+}
+
+/* Streaming cursor */
+.cursor {
+  display: inline-block;
+  width: 7px;
+  height: 16px;
+  margin-left: 2px;
+  background: var(--fn-color-brand);
+  border-radius: 1px;
+  vertical-align: text-bottom;
+  animation: blink 0.8s steps(2) infinite;
+}
+
+@keyframes blink {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ---------- Thinking indicator ---------- */
+.thinkingBubble {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 18px;
+  animation: fadeIn 0.3s ease;
+
+  .avatarCol {
+    flex: 0 0 42px;
+    width: 42px;
+  }
+}
+
+.thinkingContent {
+  background: var(--fn-bg-secondary);
+  padding: 10px 16px;
+  border-radius: 4px 18px 18px 18px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.thinkingText {
+  font-size: 13px;
+  color: var(--fn-text-secondary);
+  margin-left: 4px;
+  animation: thinkingFadeInOut 2s ease-in-out infinite;
+}
+
+@keyframes thinkingFadeInOut {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.thinkingCancelBtn {
+  margin-left: 8px;
+  padding: 2px 10px;
+  border: 1px solid var(--fn-border-secondary);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fn-text-tertiary);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    color var(--fn-transition-fast),
+    border-color var(--fn-transition-fast),
+    background var(--fn-transition-fast);
+
+  &:hover {
+    color: var(--fn-color-danger);
+    border-color: var(--fn-color-danger);
+    background: var(--fn-bg-danger-light);
+  }
+}
+
+.thinkingDot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--fn-radius-full);
+  background: var(--fn-color-brand, var(--fn-text-tertiary));
+  opacity: 0.6;
+  animation: thinkingPulse 1.4s ease-in-out infinite;
+
+  &:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  &:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+}
+
+@keyframes thinkingPulse {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Unified bottom waiting state — fixed slot for the whole stream. */
+.generatingSlot {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 4px 4px 8px;
+  box-sizing: border-box;
+}
+
+.generatingIndicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.generatingText {
+  font-size: 12px;
+  color: var(--fn-text-tertiary);
+  margin-left: 4px;
+}
+
+/* ---------- Tool-only message row (no bubble wrapper) ---------- */
+.toolOnlyRow {
+  padding: 2px 0;
+}
+
+/* ---------- Inline tool details ---------- */
+.inlineToolBlock {
+  margin-top: 8px;
+  padding: 0;
+  border-top: none;
+}
+
+.inlineToolSummary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--fn-border-secondary, rgba(0, 0, 0, 0.06));
+  border-radius: 10px;
+  background: var(--fn-bg-secondary, rgba(0, 0, 0, 0.02));
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+
+  &:hover {
+    background: var(--fn-bg-hover, rgba(0, 0, 0, 0.04));
+    border-color: color-mix(in srgb, var(--fn-color-brand) 20%, transparent);
+  }
+}
+
+.inlineToolLabel {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--fn-color-brand) 8%, transparent);
+  color: var(--fn-text-brand);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.inlineToolName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fn-text-primary);
+  font-size: 12px;
+}
+
+.inlineToolStatus {
+  margin-left: auto;
+  color: var(--fn-text-tertiary);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.inlineToolChevron {
+  flex-shrink: 0;
+  color: var(--fn-text-tertiary);
+  transition: transform 0.2s ease;
+}
+
+.inlineToolChevronOpen {
+  transform: rotate(90deg);
+}
+
+.inlineToolDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--fn-bg-secondary, rgba(0, 0, 0, 0.02));
+  border: 1px solid var(--fn-border-secondary, rgba(0, 0, 0, 0.06));
+}
+
+.inlineToolMediaPreview {
+  margin-top: 8px;
+}
+
+.toolMediaStrip {
+  margin: 8px 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toolMediaVideo {
+  max-width: min(280px, 85vw);
+  max-height: 200px;
+  border-radius: 8px;
+  background: #000;
+}
+
+.toolMediaImage {
+  max-width: min(220px, 65vw);
+  max-height: 160px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.toolMediaFallback {
+  color: var(--fn-text-tertiary);
+  font-size: 12px;
+}
+
+.inlineToolSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inlineToolSectionLabel {
+  color: var(--fn-text-tertiary);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.inlineToolCode {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--fn-bg-quaternary, rgba(0, 0, 0, 0.03));
+  color: var(--fn-text-primary);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-x: auto;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.inlineToolHint {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--fn-text-secondary);
+}
+
+.acpPermissionActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* ---------- Assistant turn process summary (tools + thinking) ---------- */
+.processSummaryRow {
+  .chatMsgColumns();
+  align-items: start;
+  max-width: 100%;
+
+  .avatarCol {
+    grid-column: 1;
+    justify-self: center;
+  }
+
+  .processSummary {
+    grid-column: 2;
+  }
+}
+
+.processSummary {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  max-width: 100%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(15, 23, 42, 0.025);
+}
+
+.pinnedToolResults {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  margin-top: 8px;
+  min-width: 0;
+}
+
+.pinnedToolResultItem {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.toolUiRendererWrap {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  /* Normal block flow: cards with maxWidth keep filling up to that cap;
+     cards with width:100% fill the message column. Do not use fit-content /
+     inline-grid here — those shrink to content width. */
+
+  .toolUiDockActions {
+    position: absolute;
+    z-index: 2;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
+
+  &:hover .toolUiDockActions,
+  &:focus-within .toolUiDockActions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  @media (hover: none) {
+    .toolUiDockActions {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+}
+
+.toolUiDockBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--fn-border-secondary);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--fn-bg-primary) 92%, transparent);
+  color: var(--fn-text-secondary);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+
+  &:hover {
+    color: var(--fn-color-brand);
+    border-color: color-mix(in srgb, var(--fn-color-brand) 38%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--fn-color-brand);
+    outline-offset: 2px;
+  }
+}
+
+.toolUiDockPlaceholder {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 8px 12px;
+  border: 1px dashed var(--fn-border-secondary);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--fn-bg-secondary) 70%, transparent);
+  color: var(--fn-text-secondary);
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--fn-color-brand) 38%, transparent);
+    color: var(--fn-color-brand);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--fn-color-brand);
+    outline-offset: 2px;
+  }
+}
+
+.toolUiDockPlaceholderTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fn-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolUiDockPlaceholderHint {
+  font-size: 12px;
+  color: var(--fn-text-tertiary);
+  flex-shrink: 0;
+}
+
+.assistantTurnAnswer {
+  min-width: 0;
+}
+
+.knowledgeCitations {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.knowledgeCitationsLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fn-text-tertiary);
+}
+
+.knowledgeCitationsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.knowledgeCitationChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 10px;
+  border: 1px solid var(--fn-border-secondary);
+  border-radius: 999px;
+  background: var(--fn-bg-primary);
+  color: var(--fn-text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--fn-color-brand);
+    border-color: color-mix(in srgb, var(--fn-color-brand) 38%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--fn-color-brand);
+    outline-offset: 2px;
+  }
+}
+
+.knowledgeCitationName {
+  min-width: 0;
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knowledgeCitationKb {
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 8rem;
+  color: var(--fn-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.openBrowserPrompt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 8px 14px;
+  border: 1px solid color-mix(in srgb, var(--fn-color-brand) 22%, transparent);
+  border-radius: 10px;
+  background: color-mix(
+    in srgb,
+    var(--fn-color-brand) 5%,
+    var(--fn-bg-primary)
+  );
+  color: var(--fn-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+
+  &:hover {
+    color: var(--fn-color-brand);
+    background: color-mix(
+      in srgb,
+      var(--fn-color-brand) 9%,
+      var(--fn-bg-primary)
+    );
+    border-color: color-mix(in srgb, var(--fn-color-brand) 38%, transparent);
+    box-shadow: 0 2px 8px
+      color-mix(in srgb, var(--fn-color-brand) 12%, transparent);
+
+    .openBrowserPromptArrow {
+      transform: translateX(2px);
+      color: var(--fn-color-brand);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--fn-color-brand);
+    outline-offset: 2px;
+  }
+}
+
+.openBrowserPromptActive {
+  border-color: color-mix(in srgb, var(--fn-color-brand) 42%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--fn-color-brand) 8%,
+    var(--fn-bg-primary)
+  );
+}
+
+.openBrowserPromptIcon {
+  flex-shrink: 0;
+  color: var(--fn-color-brand);
+}
+
+.openBrowserPromptArrow {
+  flex-shrink: 0;
+  color: var(--fn-text-tertiary);
+  transition:
+    transform 0.15s ease,
+    color 0.15s ease;
+}
+
+.processSummaryToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--fn-text-tertiary);
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: var(--fn-text-secondary);
+  }
+}
+
+.processSummaryText {
+  flex: 1;
+  min-width: 0;
+}
+
+.processSummaryChevron {
+  flex-shrink: 0;
+  color: var(--fn-text-quaternary);
+  transition: transform 0.2s ease;
+}
+
+.processSummaryChevronOpen {
+  transform: rotate(90deg);
+}
+
+.processSummaryBody {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--fn-border-secondary, rgba(0, 0, 0, 0.06));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.processThinkingItem {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border-left: 2px solid var(--fn-border-secondary);
+  background: var(--fn-bg-subtle, rgba(0, 0, 0, 0.02));
+  color: var(--fn-text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.processToolItem {
+  min-width: 0;
+}
+
+/* ---------- Thinking/reasoning collapsible panel ---------- */
+.thinkingBlock {
+  margin-bottom: 12px;
+  border-radius: 0;
+  border: none;
+  border-left: 1.5px solid var(--fn-border-secondary, rgba(100, 100, 100, 0.12));
+  background: transparent;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+
+  &:hover {
+    border-left-color: color-mix(
+      in srgb,
+      var(--fn-color-brand) 35%,
+      transparent
+    );
+  }
+}
+
+.thinkingSummary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--fn-text-tertiary, #888);
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  transition:
+    color 0.15s,
+    background 0.15s;
+
+  &:hover {
+    background: rgba(100, 100, 100, 0.03);
+    color: var(--fn-text-secondary, #666);
+  }
+}
+
+.thinkingLabel {
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.thinkingSummaryText {
+  font-size: 13px;
+  line-height: 1.4;
+  user-select: none;
+}
+
+.thinkingChevron {
+  flex-shrink: 0;
+  color: var(--fn-text-quaternary, #999);
+  transition: transform 0.2s ease;
+  margin-left: auto;
+}
+
+.thinkingChevronOpen {
+  transform: rotate(90deg);
+}
+
+.thinkingPanel {
+  padding: 4px 12px 10px;
+  border-top: none;
+  font-size: 14px;
+  color: var(--fn-text-secondary, #555);
+  opacity: 0.92;
+  animation: thinkingPanelFadeIn 0.22s ease both;
+  overflow: hidden;
+}
+
+@keyframes thinkingPanelFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 0.88;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- Message timestamp & usage ---------- */
+.msgTime {
+  font-size: 10px;
+  color: var(--fn-text-quaternary);
+  margin-top: 0;
+  padding: 0;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.msgTimeRight {
+  text-align: right;
+  justify-content: flex-end;
+}
+
+.msgMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  padding: 0 4px;
+  opacity: 0.5;
+  font-size: 10px;
+  transition: opacity 0.2s;
+
+  .messageBubble:hover & {
+    opacity: 0.9;
+  }
+}
+
+.msgMetaRowRight {
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+.msgUsage {
+  font-size: 10px;
+  color: var(--fn-text-quaternary);
+  user-select: none;
+}
+
+.errorDebugRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.errorDebugTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--fn-border-secondary);
+  background: var(--fn-bg-secondary);
+  color: var(--fn-color-danger, #ff4d4f);
+  font-size: 10px;
+  line-height: 1.4;
+  user-select: text;
+}
+
+/* ---------- Message copy button ---------- */
+
+/* User message: actions under the bubble (easier hit targets than side icons). */
+.userMsgRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 6px;
+  width: 100%;
+}
+
+.userMsgColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+
+.userMsgActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+
+  .msgCopyBtn,
+  .msgActionBtn {
+    width: 22px;
+    height: 22px;
+    margin-left: 0;
+    /* Invisible until hover/focus, but still receive clicks if aimed. */
+    opacity: 0;
+    pointer-events: auto;
+  }
+
+  &:hover .msgCopyBtn,
+  &:hover .msgActionBtn,
+  &:focus-within .msgCopyBtn,
+  &:focus-within .msgActionBtn {
+    opacity: 1;
+  }
+
+  .msgCopyBtn:hover,
+  .msgActionBtn:hover {
+    opacity: 1;
+    color: var(--fn-text-primary);
+    background: var(--fn-bg-hover);
+  }
+
+  .msgActionBtn:disabled,
+  .msgActionBtn:disabled:hover {
+    cursor: not-allowed;
+    opacity: 0.35;
+  }
+}
+
+/* Reveal when the user bubble (or meta row) is hovered/focused. */
+.bubbleContent:hover .userMsgActions .msgCopyBtn,
+.bubbleContent:hover .userMsgActions .msgActionBtn,
+.bubbleContent:focus-within .userMsgActions .msgCopyBtn,
+.bubbleContent:focus-within .userMsgActions .msgActionBtn,
+.messageBubble:hover .userMsgActions .msgCopyBtn,
+.messageBubble:hover .userMsgActions .msgActionBtn {
+  opacity: 1;
+}
+
+.msgCopyBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--fn-border-secondary);
+  border-radius: var(--fn-radius-sm);
+  background: var(--fn-bg-primary);
+  color: var(--fn-text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--fn-transition-fast),
+    color var(--fn-transition-fast),
+    background var(--fn-transition-fast);
+  padding: 0;
+  flex-shrink: 0;
+
+  &:hover {
+    color: var(--fn-text-primary);
+    background: var(--fn-bg-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--fn-color-brand);
+    outline-offset: 2px;
+    opacity: 1;
+  }
+}

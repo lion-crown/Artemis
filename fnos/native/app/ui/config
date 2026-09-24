@@ -1,0 +1,16 @@
+{
+    ".url": {
+        "artemis-native.Application": {
+            "title": "Artemis",
+            "icon": "images/icon_{0}.png",
+            "type": "iframe",
+            "protocol": "http",
+            "port": "8089",
+            "url": "/",
+            "allUsers": true,
+            "control": {
+                "accessPerm": "readonly"
+            }
+        }
+    }
+}

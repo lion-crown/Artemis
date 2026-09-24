@@ -1,0 +1,764 @@
+/* Chat input model/skill/connector/shortcut pickers */
+
+/* ── Model picker in chat input ──────────────────────────────────────── */
+.modelPopover :global(.ant-popover-inner) {
+  padding: 6px;
+  border-radius: 10px;
+}
+
+.modelMenuColumn {
+  display: flex;
+  flex-direction: column;
+  min-width: 240px;
+  max-width: 320px;
+}
+
+.modelMenu {
+  min-width: 240px;
+  max-width: 320px;
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.modelMenuDivider {
+  width: 100%;
+  height: 1px;
+  margin: 4px 0;
+  background: var(--fn-border-secondary, rgba(0, 0, 0, 0.06));
+}
+
+.modelMenuFooter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fn-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+
+  &:hover {
+    background: var(--fn-sidebar-item-hover, rgba(0, 0, 0, 0.04));
+    color: var(--fn-text-primary);
+  }
+}
+
+.modelPickerPanel {
+  display: flex;
+  align-items: stretch;
+  max-width: min(620px, calc(100vw - 32px));
+}
+
+.modelPickerPanelExpanded .modelMenuColumn {
+  padding-right: 6px;
+  border-right: 1px solid var(--fn-border-secondary, rgba(0, 0, 0, 0.06));
+}
+
+.modelMenuItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+
+  &:hover {
+    background: var(--fn-sidebar-item-hover, rgba(0, 0, 0, 0.04));
+  }
+}
+
+.modelMenuRow {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-height: 36px;
+  border-radius: 8px;
+  transition: background 0.15s;
+
+  &:hover {
+    background: var(--fn-sidebar-item-hover, rgba(0, 0, 0, 0.04));
+  }
+}
+
+.modelMenuSelect {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  padding: 8px 6px 8px 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.modelMenuReasoning {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  max-width: 116px;
+  padding: 8px 8px 8px 4px;
+  border: none;
+  background: transparent;
+  color: var(--fn-text-tertiary);
+  font-size: 11px;
+  cursor: pointer;
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &:hover {
+    color: var(--fn-color-brand, #e85d75);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--fn-color-brand);
+    outline-offset: -2px;
+    border-radius: 6px;
+  }
+}
+
+.modelMenuItemActive {
+  background: color-mix(in srgb, var(--fn-color-brand) 8%, transparent);
+  color: var(--fn-color-brand);
+}
+
+.modelMenuLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fn-text-primary);
+  line-height: 1.3;
+  word-break: break-all;
+}
+
+.modelMenuItemActive .modelMenuLabel {
+  color: var(--fn-color-brand);
+}
+
+.modelMenuHint {
+  font-size: 11px;
+  color: var(--fn-text-tertiary);
+}
+
+.reasoningMenuPanel {
+  width: 220px;
+  min-width: 220px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-left: 6px;
+}
+
+.reasoningMenuHeader {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 34px;
+  padding: 4px 8px;
+  color: var(--fn-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.reasoningMenuBack {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  margin-left: -6px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fn-text-secondary);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--fn-bg-hover, rgba(0, 0, 0, 0.04));
+  }
+}
+
+.reasoningMenuSectionLabel {
+  padding: 7px 10px 4px;
+  color: var(--fn-text-tertiary);
+  font-size: 11px;
+}
+
+.reasoningMenuChoice,
+.reasoningStatusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fn-text-primary);
+  font-size: 13px;
+  text-align: left;
+}
+
+.reasoningMenuChoice {
+  cursor: pointer;
+
+  &:hover {
+    background: var(--fn-sidebar-item-hover, rgba(0, 0, 0, 0.04));
+  }
+}
+
+.reasoningMenuChoiceActive {
+  background: rgba(232, 93, 117, 0.08);
+  color: var(--fn-color-brand, #e85d75);
+}
+
+.reasoningStatusRow {
+  justify-content: flex-start;
+  color: var(--fn-color-brand, #e85d75);
+
+  span {
+    flex: 1;
+  }
+}
+
+.reasoningMenuDivider {
+  height: 1px;
+  margin: 5px 4px 0;
+  background: var(--fn-border-secondary, rgba(0, 0, 0, 0.06));
+}
+
+/* ── Skill / connector / shortcut picker (chat input) ─────────────────── */
+.skillPickerPopover :global(.ant-popover-inner) {
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  width: max-content;
+}
+
+.skillPickerPopover :global(.ant-popover-arrow)::before {
+  background: var(--fn-bg-elevated, #fff);
+}
+
+.skillPickerPanel {
+  width: 360px;
+  max-width: min(360px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  background: var(--fn-bg-elevated, #fff);
+}
+
+.connectorPickerPanel {
+  width: 280px;
+  max-width: min(280px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  background: var(--fn-bg-elevated, #fff);
+}
+
+.shortcutPickerPanel {
+  width: min(420px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  background: var(--fn-bg-elevated, #fff);
+}
+
+.slashPickerItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  padding: 5px 6px;
+  border: none;
+  border-radius: var(--fn-radius-sm);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: var(--fn-bg-hover, rgba(0, 0, 0, 0.04));
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .shortcutPickerIcon {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+  }
+
+  .skillPickerName {
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  .skillPickerDesc {
+    font-size: 10px;
+    line-height: 1.25;
+  }
+}
+
+.shortcutPickerPanel .skillPickerList {
+  padding: 6px 8px;
+  max-height: 300px;
+}
+
+.skillPickerSearch {
+  position: relative;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--fn-border-secondary, rgba(0, 0, 0, 0.06));
+}
+
+.skillPickerSearchInput {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--fn-text-primary);
+  padding-right: 26px;
+
+  &::placeholder {
+    color: var(--fn-text-quaternary);
+  }
+}
+
+.skillPickerSearchIcon {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--fn-text-quaternary);
+  pointer-events: none;
+}
+
+.skillPickerList {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.skillPickerEmpty {
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--fn-text-tertiary);
+}
+
+.skillPickerItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: var(--fn-bg-hover, rgba(0, 0, 0, 0.04));
+  }
+}
+
+.skillPickerItemActive {
+  background: var(--fn-bg-hover, rgba(0, 0, 0, 0.04));
+}
+
+.expertPickerItemActive {
+  background: rgba(245, 158, 11, 0.1);
+
+  &:hover {
+    background: rgba(245, 158, 11, 0.14);
+  }
+}
+
+.expertPickerItemText {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.subagentPickerItemActive {
+  background: rgba(13, 148, 136, 0.1);
+
+  &:hover {
+    background: rgba(13, 148, 136, 0.14);
+  }
+}
+
+.expertSharedBadge {
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 6px;
+  border-radius: 4px;
+  color: var(--fn-color-brand, #1677ff);
+  background: color-mix(
+    in srgb,
+    var(--fn-color-brand, #1677ff) 12%,
+    transparent
+  );
+  white-space: nowrap;
+}
+
+.expertAgentAvatar {
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  overflow: hidden;
+}
+
+.connectorPickerItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  background: transparent;
+  text-align: left;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: var(--fn-bg-hover, rgba(0, 0, 0, 0.04));
+  }
+}
+
+.connectorPickerItemActive {
+  background: rgba(37, 99, 235, 0.08);
+
+  &:hover {
+    background: rgba(37, 99, 235, 0.12);
+  }
+}
+
+.connectorPickerSwitch {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.connectorPickerAvatar {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--fn-bg-subtle, #f3f4f6);
+}
+
+.knowledgePickerAvatar {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  overflow: hidden;
+  color: #0284c7;
+  background: rgba(14, 165, 233, 0.12);
+}
+
+.shortcutPickerIcon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.shortcutPickerIconViolet {
+  background: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+}
+
+.shortcutPickerIconEmerald {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.shortcutPickerIconRose {
+  background: rgba(244, 63, 94, 0.12);
+  color: #e11d48;
+}
+
+.shortcutPickerIconBlue {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+}
+
+.shortcutPickerIconAmber {
+  background: rgba(245, 158, 11, 0.14);
+  color: #d97706;
+}
+
+.shortcutPickerIconOrange {
+  background: rgba(249, 115, 22, 0.12);
+  color: #ea580c;
+}
+
+.skillPickerAvatar {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fn-bg-subtle, #f3f4f6);
+  color: var(--fn-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  overflow: hidden;
+}
+
+.skillPickerAvatarImg {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.skillPickerText {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.skillPickerName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fn-text-primary);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skillPickerDesc {
+  font-size: 11px;
+  color: var(--fn-text-tertiary);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skillPickerFooter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-top: 1px solid var(--fn-border-secondary, rgba(0, 0, 0, 0.06));
+  background: transparent;
+  color: var(--fn-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+
+  &:hover {
+    background: var(--fn-bg-hover, rgba(0, 0, 0, 0.03));
+    color: var(--fn-text-primary);
+  }
+}
+
+.modelPickerBtn {
+  max-width: 220px;
+}
+
+.modelPickerLabel {
+  font-size: 11px;
+  margin-left: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 170px;
+}
+
+.modelPickerReasoningLabel {
+  color: currentColor;
+  opacity: 0.78;
+}
+
+.mobilePickerDrawer {
+  :global(.ant-drawer-content) {
+    border-radius: 16px 16px 0 0;
+    background: var(--fn-bg-elevated, #fff);
+  }
+
+  :global(.ant-drawer-header) {
+    background: var(--fn-bg-elevated, #fff);
+    border-bottom: 1px solid var(--fn-border-secondary, rgba(0, 0, 0, 0.06));
+  }
+
+  :global(.ant-drawer-body) {
+    max-height: min(72vh, 560px);
+    overflow-y: auto;
+    padding: 0;
+  }
+
+  .skillPickerPanel,
+  .connectorPickerPanel,
+  .shortcutPickerPanel,
+  .modelMenu,
+  .modelPickerPanel,
+  .reasoningMenuPanel {
+    width: 100%;
+    max-width: none;
+  }
+
+  .modelPickerPanelExpanded .modelMenu {
+    padding-right: 0;
+    border-right: none;
+  }
+
+  .reasoningMenuPanel {
+    min-width: 0;
+    padding: 4px 8px calc(8px + env(safe-area-inset-bottom));
+  }
+
+  /* SearchablePickerPanel (picker.module.less) class names are hashed */
+  :global([class*="panelWide"]),
+  :global([class*="panelNarrow"]),
+  :global([class*="panelCompact"]) {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.compactPickerPanel {
+  min-width: 280px;
+}
+
+.compactPickerBack {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: none;
+  border-bottom: 1px solid var(--fn-border-secondary, rgba(0, 0, 0, 0.06));
+  background: transparent;
+  color: var(--fn-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--fn-bg-hover, rgba(0, 0, 0, 0.03));
+    color: var(--fn-text-primary);
+  }
+}
+
+.mobileOverflowMenu {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0 calc(8px + env(safe-area-inset-bottom));
+}
+
+.mobileOverflowItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  color: var(--fn-text-primary);
+  cursor: pointer;
+  text-align: left;
+
+  &:active {
+    background: var(--fn-bg-hover, rgba(0, 0, 0, 0.04));
+  }
+}
+
+.mobileOverflowItemMain {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.mobileOverflowItemMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  color: var(--fn-text-quaternary);
+}
+
+.connectorMenuIcon {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
+.connectorMenuItem {
+  flex-direction: row !important;
+  align-items: center !important;
+}

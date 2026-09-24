@@ -1,0 +1,467 @@
+<p align="center">
+  <strong>支持多用户、多 Agent 的自托管 AI 助手 — 更聪明，更懂你。</strong>
+</p>
+
+<p align="center">
+  <a href="https://www.python.org/downloads/"><img alt="Python 3.12+" src="https://img.shields.io/badge/python-3.12%2B-blue?logo=python&logoColor=white" /></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green" /></a>
+  <a href="https://pypi.org/project/artemis/"><img src="https://img.shields.io/pypi/v/artemis" alt="PyPI" /></a>
+  <a href="https://github.com/astral-sh/ruff"><img alt="Code Style: Ruff" src="https://img.shields.io/badge/code%20style-ruff-000000?logo=ruff&logoColor=white" /></a>
+  <a href="https://discord.gg/jPas5J8Ua"><img alt="Discord" src="https://img.shields.io/badge/Discord-%E5%8A%A0%E5%85%A5-5865F2?logo=discord&logoColor=white" /></a>
+</p>
+
+<p align="center">
+  <a href="#-概述">概述</a> ·
+  <a href="#-亮点">亮点</a> ·
+  <a href="#-核心技术">核心技术</a> ·
+  <a href="#-功能特性">功能特性</a> ·
+  <a href="#-规划">规划</a> ·
+  <a href="#-快速开始">快速开始</a>·
+  <a href="#-目录">目录</a>
+</p>
+
+<p align="center">
+  <a href="README.md">English</a> · <b>中文</b>
+</p>
+
+---
+
+## 📌 概述
+
+**Artemis** 是一个开源、自托管的 AI 助手。它不仅是工具，更是可并行运作的数字生命体。通过多 Agent 架构，它为团队、家庭和个人构建了既独立又协作的智能环境。并且这一切都运行在你的机器上——完全自托管的设计让隐私不再是妥协，而单进程启动的便捷性，则让强大的 Web 控制台、CLI 与 IM 集成触手可及。
+
+借助飞书、钉钉、QQ、Discord、企业微信或 HTTP/SSE/WebSocket API 与任意 Agent 对话；通过**专家库**一键创建专业角色，通过 **Connector**（OAuth + MCP）接入外部服务，通过 **ACP** 与 IDE / 终端 AI 工具双向协作。
+
+> Artemis 的设计目标：让每一次对话、工作区与凭据都留在你自己的机器上，同时为每个用户配备一组可按场景切换的专业 Agent。
+
+## ✨ 亮点
+
+| | 特性 | 说明 |
+|---|------|------|
+| 👥 | **多用户多 Agent 专家团** | 一人管理，全家共用；内置专家库，按场景切换专业角色 |
+| 🎭 | **MBTI 人格** | 16 种人格模板与互动测试，为每个 Agent 赋予鲜明性格 |
+| 🔒 | **更安全** | JWT 多用户隔离、工具审批、Shell 命令防护与敏感信息脱敏，数据留在本地 |
+| 🔌 | **Connector 拓展体系** | 一键接入腾讯全家桶（文档 / 微博 / 新闻等），OAuth 与 MCP 网关轻松扩展 |
+| 💾 | **可插拔后端存储** | 本地目录、Docker 容器、PostgreSQL 或 COS/S3，AI 在隔离边界内操作 |
+| 🧠 | **可迁移记忆系统** | 基于 harness-memory，记忆随工作区迁移 |
+| 📚 | **知识库** | 基于文档的 RAG 检索，让 Agent 的回答锚定你的私有知识库 |
+| 🧩 | **插件** | 支持第三方插件扩展；内置插件随安装注入，按需一键启用 |
+| ↔️ | **ACP 双向集成** | `artemis acp` 增强 IDE 与终端 AI；对话中委派 OpenCode / Claude Code 等 |
+| 💻 | **终端 AI+** | 浏览器内交互式 Shell，AI 辅助命令执行与排障 |
+| 🌐 | **浏览器 AI+** | 基于 Chromium 的无头浏览器会话，支持网页自动化、截图与远程操控 |
+| 🖥️ | **远程桌面** | 控制台内实时看屏与键鼠操控，跨 Linux / Windows / macOS；适合远程办公、GUI 软件操作，无图形 Linux 可一键搭建隔离桌面 |
+| 🏠 | **可自托管** | 一条 `artemis run` 即可运行控制台、CLI、IM 通道与定时任务，数据保留在本机 |
+
+<details>
+<summary>🐾 你能用 Artemis 做什么</summary>
+
+- **个人助理** — 让专属 Agent 帮你写周报、整理资料、定日程，记忆随工作区长期保留。
+- **家庭共享** — 一个管理员账号，全家共用；按成员分配不同 Agent 与专家角色。
+- **团队助手** — 多 Agent 并行协作，对接飞书 / 钉钉 / 企业微信，把任务自动分发到群里。
+- **开发者增效** — 通过 ACP 把编码任务委派给 OpenCode / Claude Code，或在终端用 AI 辅助排障。
+- **网页自动化** — 用浏览器 AI+ 自动填表、截图、采集公开信息。
+- **定时任务** — 用自然语言配置 Cron，让 Agent 每天按时推送或执行任务。
+
+</details>
+
+
+
+## 🧠 核心技术
+
+| 层级 | 技术 |
+|------|------|
+| **语言** | Python 3.12+ |
+| **Web 框架** | FastAPI + uvicorn |
+| **Agent 运行时** | harness-agent |
+| **IM 桥接** | harness-gateway |
+| **控制平面数据库** | SQLite (WAL，默认) 或 PostgreSQL（可选） |
+| **前端** | React 18 + TypeScript + Vite + Ant Design |
+| **调度** | APScheduler |
+| **ACP** | agent-client-protocol |
+| **构建 / 质量** | hatchling · ruff · mypy · pytest |
+
+Artemis 基于一系列 Harness 工程实践构建——它将这些专注的运行时组合进同一个进程：
+
+- **harness-agent** — Agent 运行时：模型路由、工具、技能与对话检查点。
+- **harness-gateway** — 多平台 IM 通道桥接，将各类入站消息归一为统一的处理管线。
+- **harness-memory** — 分层记忆与全文检索，让 Agent 的记忆随工作区一同迁移。
+- **harness-browser** — 基于 CDP 的浏览器自动化，支持持久化配置，用于网页类任务。
+
+Artemis 不依赖外部消息队列或中间件，而是通过进程内的 `HarnessProcessor` 统一路由所有入口——Web UI、IM 与定时任务。最终呈现为一个可重启恢复的单进程：启动时整个状态都从控制面数据库重建，并可选用 PostgreSQL。
+
+## 🤔 功能特性
+
+### 服务器与认证
+- 多用户 JWT 认证，支持管理员角色
+- 首次运行向导（`artemis init`）
+- 交互式 API 文档：`/api/docs`（默认关闭 — 在 `config.json` 中设置 `"enable_api_docs": true` 开启）
+
+### Agent
+- 每位用户可创建多个 Agent；各自拥有独立工作区、供应商、通道和定时任务
+- 16 种 MBTI 人格模板 + 自定义系统提示词
+- 启动时扫描专家库（`infra/agents/experts/library/`）
+- 工作区后端：本地磁盘、COS、S3 及其他远程存储
+
+### 通道与自动化
+- IM 通道：飞书、钉钉、QQ、Discord、企业微信等
+- 主动定时任务，支持自然语言和斜杠命令触发
+- Web UI、IM、定时任务共用同一套消息处理链路
+
+### 使用入口
+- **Web 控制台** — 对话、Agent 管理、连接器、通道、定时任务、设置
+- **CLI** — `artemis run`、`artemis chat`、`artemis acp`、管理命令
+- **HTTP/SSE/WebSocket API** — 完整的程序化访问能力
+
+### 知识库与插件
+- **知识库** — 基于文档的 RAG 检索；上传文件后，语义检索让 Agent 的回答锚定你的私有知识库
+- **插件** — 安装并管理第三方插件（`artemis plugin`）；内置插件随安装注入，按需在控制台一键启用
+
+### ACP（Agent Client Protocol）
+
+Artemis 支持两个方向的 ACP 集成：
+
+1. **入站** — 外部工具使用**你的** Artemis Agent
+   ```bash
+   artemis acp --agent main   # 为 Zed、OpenCode 等提供 stdio ACP 服务
+   ```
+
+2. **出站** — Artemis 委派给外部编程 Agent
+   - 控制台 → **ACP**（`/acp`）：配置 Runner（按用户全局）
+   - 为 Agent 启用 **acp_runner** 后，在对话中委派任务
+
+内置出站 Runner 包括 OpenCode、CodeBuddy、Claude Code 和 Codex。
+
+完整配置：**[docs/acp.md](docs/acp.md)**。
+
+## 🧭 规划
+
+以下是我们的中长期规划：
+
+- [ ] **资源共享池** — 构建技能 / 子智能体共享池，用户在创建专家时可直接取用，无需从零搭建。
+- [ ] **专家共享** — 支持用户将自有专家共享给其他用户使用，沉淀优秀配置、避免重复造轮子。
+- [ ] **浏览器与终端能力补全** — 增强浏览器技能*录制*（把操作流程录制为可复用技能），并完善终端 AI 助手能力。
+- [ ] **AgentTeams** — 支持协调者自主调度、编排多位专家，协同完成复杂多步骤任务。
+- [ ] **自进化能力** — 将日常对话自动沉淀为技能，让助手随使用不断成长。
+- [ ] **PC / 移动端客户端** — 在 Web 控制台与 IM 通道之外，提供原生桌面与移动端应用。
+
+规划会随社区发展动态调整，以上仅供参考。
+
+## 🚀 快速开始
+
+### 环境要求
+
+- **macOS / Linux / Windows**
+- 无需预先安装 Python — 安装脚本通过 [uv](https://docs.astral.sh/uv/) 在 `~/.artemis/` 下创建隔离的 Python 3.12 虚拟环境
+- 运行时配置使用 `ARTEMIS_*` 环境变量；详见[配置说明](docs/configuration.md)。
+- 现代多核 CPU，并预留数 GB 内存供进程与模型/Embedding 缓存使用；磁盘需容纳数据库、Agent 工作区与文档语料
+
+### 1. 安装
+
+**macOS / Linux** — 一键安装（推荐）：
+
+```bash
+curl -fsSL https://finnie-1258344699.cos.ap-guangzhou.myqcloud.com/artemis/install.sh | bash
+```
+
+**Windows（PowerShell）**：
+
+```powershell
+irm https://finnie-1258344699.cos.ap-guangzhou.myqcloud.com/artemis/install.ps1 | iex
+```
+
+**Windows（cmd）** — 下载后运行，或从已克隆的仓库执行：
+
+```bat
+curl -fsSL https://finnie-1258344699.cos.ap-guangzhou.myqcloud.com/artemis/install.bat -o install.bat
+install.bat
+```
+
+安装完成后，请打开**新终端**，或重新加载 shell 配置：
+
+```bash
+source ~/.zshrc   # Zsh
+# 或
+source ~/.bashrc  # Bash
+```
+
+安装脚本会将 `artemis` 加入 PATH。可选附加组件：
+
+```bash
+# 浏览器自动化（Playwright Chromium）
+curl -fsSL https://finnie-1258344699.cos.ap-guangzhou.myqcloud.com/artemis/install.sh | bash -s -- --extras browser
+
+# 飞书通道支持
+curl -fsSL https://finnie-1258344699.cos.ap-guangzhou.myqcloud.com/artemis/install.sh | bash -s -- --extras channels-feishu
+```
+
+完整安装选项见 [scripts/README.md](scripts/README.md)（`--version`、`--from-source`、`--mirror` 及 Windows 参数）。
+
+**备选 — PyPI**（若你已自行管理 Python 环境）：
+
+```bash
+pip install artemis
+# 可选：pip install "artemis[browser]"
+# 可选本地 ONNX Embedding 模型缓存（设置 → 模型 → 本地）：pip install "artemis[local-embedding]"
+# 仅下载目录模型供本地使用；不用于对话，也不接入 Memory。
+```
+
+从源码用 uv 开发时：
+
+```bash
+uv sync --extra local-embedding
+```
+
+### 2. 启动
+
+```bash
+# 前台运行（API + Web 控制台）
+artemis run
+
+# 自定义主机与端口
+artemis run --host 0.0.0.0 --port 8088
+
+# 注册为系统服务（systemd / launchd / Windows 服务）
+artemis service start
+```
+
+打开 **http://127.0.0.1:8088**。Docker 首次初始化会自动生成随机管理员密码，除非通过部署配置提供密码。交互式 `artemis init` / 设置向导会让你自行设置密码（至少 8 位，且同时包含字母和数字）。
+
+### Docker（推荐用于生产部署）
+
+```bash
+# 构建并启动
+docker compose -f docker/docker-compose.yml up -d
+
+# 或手动构建
+bash docker/docker_build.sh
+docker run -d \
+  -p 8088:8088 \
+  artemis:latest
+```
+
+打开 `http://localhost:8088`。首次初始化会创建管理员账号；可通过部署配置或设置向导完成初始凭据设置。
+
+> **密码策略：** 至少 8 位，且同时包含字母和数字。
+
+高级运行时设置请参阅部署配置。
+
+
+## 📑 目录
+
+- [亮点](#-亮点)
+- [概述](#-概述)
+- [核心技术](#-核心技术)
+- [功能特性](#-功能特性)
+- [规划](#-规划)
+- [快速开始](#-快速开始)
+- **部署与使用**
+  - [安装方式](#-安装方式)
+  - [配置](#-配置)
+  - [CLI 参考](#-cli-参考)
+  - [Web 控制台](#-web-控制台)
+  - [数据目录](#-数据目录)
+- **架构与开发**
+  - [架构](#-架构)
+  - [项目结构](#-项目结构)
+  - [开发](#-开发)
+- **项目信息**
+  - [安全与隐私](#-安全与隐私)
+  - [参与贡献](#-参与贡献)
+  - [更新日志](#-更新日志)
+  - [相关项目](#-相关项目)
+  - [许可证](#-许可证)
+
+### 📦 安装方式
+
+| 方式 | 平台 | 说明 |
+|------|------|------|
+| 远程一键安装 | macOS / Linux | `curl …/artemis/install.sh \| bash` |
+| 远程一键安装 | Windows | `irm …/artemis/install.ps1 \| iex` 或 `install.bat` |
+| 本地脚本 | macOS / Linux | `bash scripts/install.sh` |
+| 本地脚本 | Windows | `scripts\install.bat` 或 `install.ps1` |
+| PyPI | 全平台 | `pip install artemis` 或 `pip install "artemis[browser]"` |
+| Docker | 全平台 | `docker/docker-compose.yml` |
+
+所有安装脚本均创建隔离环境，不会影响系统 Python。
+
+### ⚙️ 配置
+
+所有运行时数据均在本机管理，可通过 CLI 和设置向导配置。
+
+```bash
+# LLM 供应商与模型
+artemis models
+artemis provider list
+
+# IM 通道
+artemis channel list
+artemis channel install
+
+# Skill（按 Agent）
+artemis skills list --agent main
+
+# 定时任务
+artemis cron list
+artemis cron create --help
+
+# 用户（管理员）
+artemis user list
+```
+
+### 支持的 LLM 供应商
+
+OpenAI 兼容 API、DashScope（千问）、Ollama 等预设 — 在控制台或通过 `artemis provider` 按 Agent 配置。
+
+### 支持的通道
+
+| 通道 | 所需凭证 |
+|------|----------|
+| **飞书** | App ID、App Secret |
+| **钉钉** | App Key、App Secret |
+| **QQ** | Bot AppID、Token |
+| **Discord** | Bot Token |
+| **企业微信** | Corp ID、Agent Secret |
+| **Web 控制台** | 默认启用 |
+
+### 📖 CLI 参考
+
+| 命令 | 说明 |
+|------|------|
+| `artemis init` | 初始化本地数据库、管理员和 JWT 密钥 |
+| `artemis run` | 前台启动 Artemis |
+| `artemis service start` | 安装并启动系统服务 |
+| `artemis service stop` | 停止系统服务 |
+| `artemis agent` | 创建、列出、启停 Agent |
+| `artemis channel` | 安装与管理 IM 通道 |
+| `artemis chats` | REPL 与会话管理 |
+| `artemis acp` | 为 IDE 提供 stdio ACP 服务 |
+| `artemis cron` | 管理定时任务 |
+| `artemis models` | 供应商预设与模型解析 |
+| `artemis skills` | 按 Agent 启用/禁用 Skill |
+| `artemis plugin` | 安装并管理第三方插件 |
+| `artemis backup` | 导出 / 恢复备份 |
+| `artemis clean` | 清理 CLI 状态或重置本地应用数据 |
+
+完整参考：**[docs/cli.md](docs/cli.md)**。
+
+### 🖥️ Web 控制台
+
+`artemis run` 启动后访问 **http://127.0.0.1:8088**。
+
+- **对话** — 与 Agent 实时聊天
+- **Agent** — 创建 Agent，选择专家库 / MBTI 人格，配置供应商
+- **Connector** — OAuth 应用与 MCP 网关
+- **通道** — IM 平台配置
+- **定时任务** — 可视化 Cron 管理
+- **知识库** — 管理文档语料与语义检索
+- **插件** — 安装、启用与配置插件
+- **ACP** — 配置出站编程 Agent Runner
+- **设置** — 用户、安全、TLS、系统
+
+交互式 API 文档：**http://127.0.0.1:8088/api/docs**（默认关闭 — 在 `config.json` 中设置 `"enable_api_docs": true` 开启）
+
+### 📁 本地数据
+
+Artemis 在主机上管理配置、凭据、工作区、日志和本地数据库状态。也可通过设置向导或配置文件使用 PostgreSQL。详见 [docs/configuration.md](docs/configuration.md) 与 [docs/adr/002-database-backends.md](docs/adr/002-database-backends.md)。
+
+环境变量与 `config.json` 详见 [docs/configuration.md](docs/configuration.md)。
+
+### 🏗️ 架构
+
+Artemis 将用户入口、安全控制、本地 Agent 运行时、ACP 外部协作、上下文资产、平台治理与观测能力整合在同一套自托管系统中。
+
+<p align="center">
+  <img src="docs/assets/artemis-architecture.png" alt="Artemis 平台架构图" width="100%" />
+</p>
+
+```
+ArtemisServer
+ ├─ DatabasePool         SQLite (WAL) 或 PostgreSQL
+ ├─ SharedServices       依赖注入根 — 所有 repo 与配置
+ ├─ ExpertCatalog        启动时扫描 agents/experts/library/
+ ├─ UserManager
+ │   └─ HarnessAgentManager（按用户）
+ │       └─ AgentRuntime（按 Agent）
+ │           ├─ HarnessAgent      Agent 运行时（harness-agent）
+ │           ├─ HarnessProcessor  IM / UI / 定时任务入口
+ │           ├─ ChannelManager    IM 连接（harness-gateway）
+ │           └─ CronManager       APScheduler
+ └─ FastAPI app (uvicorn)
+```
+
+单进程架构。重启后从控制面数据库重建状态（默认本地 SQLite；可选 PostgreSQL）。
+
+详见 [docs/architecture.md](docs/architecture.md)、[docs/adr/001-single-process-model.md](docs/adr/001-single-process-model.md) 与 [docs/adr/002-database-backends.md](docs/adr/002-database-backends.md)。
+
+### 📁 项目结构
+
+```
+src/artemis/
+  config.py    环境变量配置
+  launch.py    ArtemisServer 启动 + uvicorn
+  infra/       业务核心（agents、gateway、cron、db、users …）
+  api/         HTTP 层 — FastAPI 路由、JWT、SSE
+  cli/         CLI 层 — Click 命令
+  dashboard/   构建后的 React SPA（wheel 产物）
+
+dashboard/     前端源码（Vite）— 在此编辑，运行 make build-frontend
+
+docker/        Docker Compose、入口脚本、构建与部署脚本
+tests/         unit/ + integration/
+```
+
+### 🛠️ 开发
+
+**前置条件：** Python 3.12+、Node 18+、[uv](https://docs.astral.sh/uv/)
+
+```bash
+# 后端
+make install          # pip install -e ".[dev]"
+make all              # format-all + lint + typecheck + test（发布门槛）
+
+# 前端（另开终端）
+make dev-frontend     # Vite 开发服务器 :5173
+make build-frontend   # 生产构建 → src/artemis/dashboard/
+cd dashboard && npx tsc --noEmit
+```
+
+单独执行：`make test`、`make lint`、`make typecheck`、`make format`。
+
+
+### 🔒 安全与隐私
+
+- **本地优先**：配置、对话、工作区与凭证均存储在本机。
+- **多用户隔离**：JWT 认证，按用户隔离 Agent 与工作区。
+- **敏感信息脱敏与工具审批**：离开工作区前自动脱敏敏感数据；高风险工具或 Shell 命令需依据护栏规则显式审批。
+- **工具护栏**：可编辑 Shell 命令规则，保护高风险操作。
+- **无厂商锁定**：可自由切换 LLM 供应商、存储后端与 IM 通道。
+
+### 🤝 参与贡献
+
+欢迎贡献代码：
+
+1. Fork 本仓库
+2. 创建功能分支（`git checkout -b feature/amazing-feature`）
+3. 提交前运行 `make all`（后端）或 `make check-all`（全栈）
+4. 发起 Pull Request
+
+完整指南见 [CONTRIBUTING.md](CONTRIBUTING.md)。安全问题见 [SECURITY.md](SECURITY.md)。
+
+模块边界与编码规范见 [AGENTS.md](AGENTS.md)。
+
+### 📋 更新日志
+
+### 🔗 相关项目
+
+| 项目 | 描述 |
+|------|------|
+| harness-agent | Agent 运行时 — 模型路由、工具、Skill、检查点 |
+| harness-gateway | 多平台 IM 通道桥接 |
+| harness-memory | 层级召回与全文搜索 |
+| harness-browser | CDP 浏览器自动化，支持 profile 持久登录 |
+
+> 这些 `harness-*` 项目正在筹备开源中，仓库地址将在发布后补充。
+
+### 📄 许可证
+
+本项目采用 [MIT License](LICENSE)。

@@ -1,0 +1,135 @@
+#!/bin/bash
+#
+# Artemis 本地版 — 重新配置回调（应用「设置」窗口提交后执行）
+#
+# 功能：
+#   - 管理员密码三选一：保持不变（keep）/ 自动生成新的随机密码（random）/
+#     自己设置新密码（custom，先按应用侧策略校验）；
+#   - 修改密码时同步：PKGVAR/.env、数据目录 artemis-login.txt 回落备份、
+#     「设置」窗口的当前密码显示，并对已初始化的实例调用官方 CLI
+#     `artemis user passwd` 离线改密（服务先停后启，避免与在线服务写库冲突）；
+#   - API Key / 日志级别可选更新，重启后生效。
+#
+set -euo pipefail
+
+_ARTEMIS_COMMON="$(dirname "$0")/common.sh"
+[ -f "$_ARTEMIS_COMMON" ] || _ARTEMIS_COMMON="/var/apps/artemis-native/cmd/common.sh"
+[ -f "$_ARTEMIS_COMMON" ] && source "$_ARTEMIS_COMMON"
+
+PKGVAR="${TRIM_PKGVAR:-/var/apps/artemis-native/var}"
+APPDEST="${TRIM_APPDEST:-/var/apps/artemis-native}"
+mkdir -p "$PKGVAR"
+ENV_FILE="$PKGVAR/.env"
+
+if [ -n "${TRIM_DATA_SHARE_PATHS:-}" ]; then
+    DATA_DIR="${TRIM_DATA_SHARE_PATHS%%:*}"
+else
+    DATA_DIR="${APPDEST}/shares/artemis-native/data"
+fi
+mkdir -p "$DATA_DIR"
+
+# 现有配置（.env 不存在时给安全默认值，正常情况下 install_callback 已写入）
+CUR_USER="$(artemis_env_get "$ENV_FILE" ARTEMIS_ADMIN_USERNAME)"
+CUR_PASS="$(artemis_env_get "$ENV_FILE" ARTEMIS_DEFAULT_PASSWORD)"
+CUR_LOG="$(artemis_env_get "$ENV_FILE" ARTEMIS_LOG_LEVEL)"
+CUR_OPENAI="$(artemis_env_get "$ENV_FILE" OPENAI_API_KEY)"
+CUR_DASH="$(artemis_env_get "$ENV_FILE" DASHSCOPE_API_KEY)"
+[ -n "$CUR_USER" ] || CUR_USER="admin"
+
+ADMIN_USER="$CUR_USER"
+PASSWORD_MODE="$(artemis_sanitize_value "${wizard_password_mode:-keep}")"
+WIZARD_PASSWORD="$(artemis_sanitize_value "${wizard_admin_password:-}")"
+LOG_LEVEL_SEL="$(artemis_sanitize_value "${wizard_log_level:-keep}")"
+OPENAI_NEW="$(artemis_sanitize_value "${wizard_openai_api_key:-}")"
+DASHSCOPE_NEW="$(artemis_sanitize_value "${wizard_dashscope_api_key:-}")"
+
+fail_config() {
+    echo "[artemis-native] $1" > "${TRIM_TEMP_LOGFILE:-/dev/null}" 2>&1 || true
+    echo "[artemis-native] $1" >&2 || true
+    exit 1
+}
+
+# ---------------------------------------------------------------------------
+# 计算新密码
+# ---------------------------------------------------------------------------
+PASS_CHANGED=0
+case "$PASSWORD_MODE" in
+    keep)
+        ADMIN_PASS="$CUR_PASS"
+        ;;
+    random)
+        ADMIN_PASS="$(artemis_generate_password 16)"
+        PASS_CHANGED=1
+        ;;
+    custom)
+        if [ -z "$WIZARD_PASSWORD" ]; then
+            fail_config "您选择了自己设置新密码，但密码为空。请输入新密码，或改选「自动生成新的随机密码」。"
+        fi
+        if ! REASON="$(artemis_validate_password "$WIZARD_PASSWORD" 2>&1)"; then
+            fail_config "新密码不符合要求：${REASON}（要求：至少 8 位，且同时包含字母和数字，不能使用过于常见的密码）"
+        fi
+        ADMIN_PASS="$WIZARD_PASSWORD"
+        PASS_CHANGED=1
+        ;;
+    *)
+        fail_config "密码设置方式无效：${PASSWORD_MODE}（应为 keep / custom / random）"
+        ;;
+esac
+
+# 日志级别：keep=保持不变
+LOG_LEVEL="$CUR_LOG"
+[ -n "$LOG_LEVEL" ] || LOG_LEVEL="info"
+case "$LOG_LEVEL_SEL" in
+    keep) : ;;
+    info|debug|warning) LOG_LEVEL="$LOG_LEVEL_SEL" ;;
+    *) LOG_LEVEL="$(artemis_sanitize_value "$LOG_LEVEL_SEL")" ;;
+esac
+
+# API Key：留空=保持不变
+OPENAI="$CUR_OPENAI"
+[ -n "$OPENAI_NEW" ] && OPENAI="$OPENAI_NEW"
+DASHSCOPE="$CUR_DASH"
+[ -n "$DASHSCOPE_NEW" ] && DASHSCOPE="$DASHSCOPE_NEW"
+
+# ---------------------------------------------------------------------------
+# 已初始化的实例：停服 → 官方 CLI 离线改密 → 启服
+# （未初始化的实例没有数据库，首次启动 init 会直接使用 .env 里的密码）
+# ---------------------------------------------------------------------------
+ARTEMIS_HOME="${DATA_DIR}/.artemis"
+MAIN="$APPDEST/cmd/main"
+if [ "$PASS_CHANGED" = "1" ] && [ -f "$ARTEMIS_HOME/artemis.db" ]; then
+    echo "[artemis-native] 检测到已初始化实例，先停止服务再离线修改管理员密码 ..." > "${TRIM_TEMP_LOGFILE:-/dev/null}" 2>&1 || true
+    [ -x "$MAIN" ] && "$MAIN" stop >/dev/null 2>&1 || true
+    if "$APPDEST/bin/artemis" user passwd "$ADMIN_USER" --password "$ADMIN_PASS" > "${TRIM_TEMP_LOGFILE:-/dev/null}" 2>&1; then
+        echo "[artemis-native] 已通过官方 CLI（artemis user passwd）修改管理员密码" > "${TRIM_TEMP_LOGFILE:-/dev/null}" 2>&1 || true
+    else
+        echo "[artemis-native] 警告：离线改密未成功（artemis user passwd 执行失败），将仅更新 .env；首次重启 init / 重新安装时生效。" > "${TRIM_TEMP_LOGFILE:-/dev/null}" 2>&1 || true
+    fi
+    [ -x "$MAIN" ] && "$MAIN" start >/dev/null 2>&1 || true
+fi
+
+# ---------------------------------------------------------------------------
+# 写回 .env（逐键更新，保留未知键）
+# ---------------------------------------------------------------------------
+artemis_env_set "$ENV_FILE" ARTEMIS_PORT "8089"
+artemis_env_set "$ENV_FILE" ARTEMIS_BIND_HOST "0.0.0.0"
+artemis_env_set "$ENV_FILE" ARTEMIS_LOG_LEVEL "$LOG_LEVEL"
+artemis_env_set "$ENV_FILE" ARTEMIS_ADMIN_USERNAME "$ADMIN_USER"
+artemis_env_set "$ENV_FILE" ARTEMIS_DEFAULT_PASSWORD "$ADMIN_PASS"
+artemis_env_set "$ENV_FILE" ARTEMIS_ADMIN_DISPLAY_NAME "Admin"
+artemis_env_set "$ENV_FILE" OPENAI_API_KEY "$OPENAI"
+artemis_env_set "$ENV_FILE" DASHSCOPE_API_KEY "$DASHSCOPE"
+
+echo "[artemis-native] 已更新配置: $ENV_FILE" > "${TRIM_TEMP_LOGFILE:-/dev/null}" 2>/dev/null || true
+
+# 凭据回落保存 + 「设置」窗口当前密码显示刷新
+artemis_write_login_file "$DATA_DIR" "$ADMIN_USER" "$ADMIN_PASS" 8089
+WIZARD_TEMPLATE="$APPDEST/wizard/config.template"
+WIZARD_DIR="$(dirname "$APPDEST")/wizard"
+[ -f "$WIZARD_TEMPLATE" ] || WIZARD_TEMPLATE="${APPDEST}/../wizard/config"
+artemis_render_config_wizard "$WIZARD_TEMPLATE" "$WIZARD_DIR" "$ADMIN_USER" "$ADMIN_PASS"
+
+# 修正属主/权限：.env 与 appdata 改回 artemis-native（root 写 root 属主会让
+# 以 artemis-native 启动的服务读取 .env 时 Permission denied）。
+fix_ownership_and_perms "$PKGVAR" "$ENV_FILE"
+exit 0

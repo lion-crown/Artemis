@@ -1,0 +1,55 @@
+# =============================================================================
+# Artemis — Docker Compose
+#
+# 用法（在仓库根目录执行）:
+#   docker compose -f docker/docker-compose.yml up -d
+#   ARTEMIS_PORT=9090 docker compose -f docker/docker-compose.yml up -d
+#   ARTEMIS_DEFAULT_PASSWORD=<your-strong-password> docker compose -f docker/docker-compose.yml up -d
+#
+# 可在 docker/ 目录放置 .env 文件，例如:
+#   ARTEMIS_PORT=9090
+#   ARTEMIS_DEFAULT_PASSWORD=<your-strong-password>
+#   ARTEMIS_ADMIN_USERNAME=admin
+#   ARTEMIS_DATABASE_DRIVER=postgresql
+#   ARTEMIS_DATABASE_URL=postgresql://artemis:artemis@host.docker.internal:5432/artemis
+#
+# 注意: docker/.env 仅用于 Compose 插值；变量必须列在下方 environment
+# 才会进入容器。也可写入数据卷内的 ~/.artemis/env（宿主机挂载目录下的 env）。
+# 密码须 ≥8 位且同时包含字母与数字（与控制台改密策略一致）。
+# 后续计划：首次启动可改为随机生成密码并写入 credential.txt。
+# =============================================================================
+
+services:
+  artemis:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: artemis:latest
+    container_name: artemis
+    restart: unless-stopped
+    ports:
+      - "${ARTEMIS_PORT:-8088}:${ARTEMIS_PORT:-8088}"
+    volumes:
+      - ${ARTEMIS_DATA:-~/.artemis}:/data/.artemis
+    environment:
+      - HOME=/data
+      - ARTEMIS_BIND_HOST=0.0.0.0
+      - ARTEMIS_PORT=${ARTEMIS_PORT:-8088}
+      - ARTEMIS_LOG_LEVEL=${ARTEMIS_LOG_LEVEL:-info}
+      - ARTEMIS_DEFAULT_PASSWORD=${ARTEMIS_DEFAULT_PASSWORD:-}
+      - ARTEMIS_ADMIN_USERNAME=${ARTEMIS_ADMIN_USERNAME:-admin}
+      - ARTEMIS_ADMIN_DISPLAY_NAME=${ARTEMIS_ADMIN_DISPLAY_NAME:-Admin}
+      - ARTEMIS_DATABASE_URL=${ARTEMIS_DATABASE_URL:-}
+      - ARTEMIS_DATABASE_DRIVER=${ARTEMIS_DATABASE_DRIVER:-}
+      - ARTEMIS_DATABASE_SQLITE_PATH=${ARTEMIS_DATABASE_SQLITE_PATH:-}
+      - ARTEMIS_DATABASE_HOST=${ARTEMIS_DATABASE_HOST:-}
+      - ARTEMIS_DATABASE_PORT=${ARTEMIS_DATABASE_PORT:-}
+      - ARTEMIS_DATABASE_NAME=${ARTEMIS_DATABASE_NAME:-}
+      - ARTEMIS_DATABASE_USER=${ARTEMIS_DATABASE_USER:-}
+      - ARTEMIS_DATABASE_PASSWORD=${ARTEMIS_DATABASE_PASSWORD:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY:-}
+      - ARTEMIS_LANGFUSE_ENABLED=${ARTEMIS_LANGFUSE_ENABLED:-false}
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
+      - LANGFUSE_BASE_URL=${LANGFUSE_BASE_URL:-}

@@ -1,0 +1,216 @@
+import { clearSetupRequired, markSetupRequired, request } from "../request";
+
+/**
+ * Auth + setup module — adapted to Artemis's multi-user backend.
+ *
+ * Artemis endpoints (spec §11.3):
+ *  - GET  /api/setup/status         → { setup_required }
+ *  - POST /api/setup/initial-admin  → 201 { id, username, role }
+ *  - POST /api/auth/login           → { access_token, token_type, expires_in, user }
+ *  - POST /api/auth/logout          → 204
+ *  - GET  /api/auth/me              → { id, username, role, display_name }
+ *  - POST /api/auth/change-password → 204
+ *
+ * The shape exported below is intentionally a superset that keeps a few
+ * legacy fields populated (``setup_done``, ``enabled``, ``has_password``)
+ * so existing compatibility components compile until they're replaced
+ * by the Artemis settings editors in phase 14.6.
+ */
+
+export interface AuthStatus {
+  /** True when no admin exists yet — UI must redirect to /setup. */
+  setup_required: boolean;
+  /** Legacy alias of ``!setup_required`` kept for compat. */
+  setup_done: boolean;
+  /** Artemis always requires auth; kept true so legacy components don't unguard. */
+  enabled: boolean;
+  /** Legacy field — Artemis always uses passwords. */
+  has_password: boolean;
+  /** True when ~/.artemis/artemis-login.txt exists on the server (wizard-only). */
+  wizard_password_exists: boolean;
+  /** When false, the wizard skips the CLI bootstrap password step. */
+  wizard_password_required: boolean;
+  /** Absolute path to the one-time bootstrap password file on the server. */
+  wizard_password_path?: string;
+  /** True after `/setup/database` has bound the control-plane pool. */
+  database_bound: boolean;
+  /** Active control-plane driver when bound (`sqlite` | `postgresql`). */
+  database_driver?: string | null;
+}
+
+export interface ArtemisUser {
+  id: number;
+  username: string;
+  role: "admin" | "user";
+  display_name: string | null;
+  locale: string;
+  /** Module permission keys; admin responses include the full catalog. */
+  permissions?: string[];
+}
+
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  user: ArtemisUser;
+  /** Legacy alias for ``access_token`` so old callers using ``.token`` keep working. */
+  token: string;
+}
+
+export interface OidcStatus {
+  enabled: boolean;
+  display_name: string;
+}
+
+export interface SetupBody {
+  username: string;
+  password: string;
+  display_name?: string | null;
+}
+
+interface RawSetupStatus {
+  setup_required: boolean;
+  wizard_password_required?: boolean;
+  wizard_password_exists?: boolean;
+  wizard_password_path?: string;
+  database_bound?: boolean;
+  database_driver?: string | null;
+}
+
+interface RawLoginResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  user: ArtemisUser;
+}
+
+/** Coalesce AuthGuard / Login / Setup probing the same endpoint in parallel. */
+let statusInFlight: Promise<AuthStatus> | null = null;
+
+/** Drop any in-flight setup-status probe (e.g. after creating the admin). */
+export function invalidateAuthStatusCache(): void {
+  statusInFlight = null;
+}
+
+function applySetupFlags(status: AuthStatus): AuthStatus {
+  if (status.setup_required) {
+    markSetupRequired();
+  } else {
+    clearSetupRequired();
+  }
+  return status;
+}
+
+export const authApi = {
+  /** Probe whether the initial admin has been created. */
+  getAuthStatus: async (): Promise<AuthStatus> => {
+    if (statusInFlight) return statusInFlight;
+
+    statusInFlight = (async () => {
+      try {
+        const raw = await request<RawSetupStatus>("/setup/status");
+        const value: AuthStatus = {
+          setup_required: raw.setup_required,
+          setup_done: !raw.setup_required,
+          enabled: true,
+          has_password: true,
+          wizard_password_exists: raw.wizard_password_exists ?? false,
+          wizard_password_required: raw.wizard_password_required ?? true,
+          wizard_password_path: raw.wizard_password_path,
+          database_bound: raw.database_bound ?? false,
+          database_driver: raw.database_driver ?? null,
+        };
+        return applySetupFlags(value);
+      } finally {
+        statusInFlight = null;
+      }
+    })();
+
+    return statusInFlight;
+  },
+
+  /** Bootstrap the first admin (only succeeds while user_manager is empty). */
+  createInitialAdmin: async (body: SetupBody) => {
+    const result = await request<{
+      id: number;
+      username: string;
+      role: string;
+    }>("/setup/initial-admin", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    invalidateAuthStatusCache();
+    clearSetupRequired();
+    return result;
+  },
+
+  /** Login — Artemis uses username + password. */
+  login: async (username: string, password: string): Promise<LoginResponse> => {
+    const raw = await request<RawLoginResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    });
+    return { ...raw, token: raw.access_token };
+  },
+
+  /** Return whether the configured OIDC provider can accept logins. */
+  getOidcStatus: () => request<OidcStatus>("/auth/oidc/status"),
+
+  /** Start an OIDC authorization-code login flow. */
+  startOidc: (redirect_after?: string) =>
+    request<{ authorization_url: string }>("/auth/oidc/start", {
+      method: "POST",
+      body: JSON.stringify({ redirect_after }),
+    }),
+
+  /** Exchange the one-time browser code for the standard JWT login response. */
+  exchangeOidcCode: async (code: string): Promise<LoginResponse> => {
+    const raw = await request<RawLoginResponse>("/auth/oidc/exchange", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+    return { ...raw, token: raw.access_token };
+  },
+
+  /** Server-side logout (best-effort; client clears token regardless). */
+  logout: () =>
+    request<void>("/auth/logout", { method: "POST" }).catch(() => undefined),
+
+  /** Get the current authenticated user. */
+  me: () => request<ArtemisUser>("/auth/me"),
+
+  /** Change current user's password. */
+  changePassword: (oldPassword: string, newPassword: string) =>
+    request<void>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({
+        old_password: oldPassword,
+        new_password: newPassword,
+      }),
+    }),
+
+  /** Update the current user's display name (PATCH /auth/me). */
+  updateProfile: (displayName: string | null) =>
+    request<ArtemisUser>("/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify({ display_name: displayName }),
+    }),
+
+  // --- Legacy stubs kept so compatibility components compile -------------
+  // These call paths are removed in Artemis's data model; the actual
+  // settings UI is rewritten in phase 14.6. Stubs return rejected
+  // promises with a clear message to make accidental use loud.
+
+  /** @deprecated Artemis always requires auth — there is no first-time set step. */
+  setPassword: (): Promise<never> =>
+    Promise.reject(
+      new Error("setPassword is not supported in Artemis; use change-password"),
+    ),
+
+  /** @deprecated Artemis cannot disable auth. */
+  disableAuth: (): Promise<never> =>
+    Promise.reject(new Error("disableAuth is not supported in Artemis")),
+
+  /** @deprecated Artemis's setup wizard is single-step; nothing to mark done. */
+  markSetupDone: (): Promise<{ ok: boolean }> => Promise.resolve({ ok: true }),
+};
